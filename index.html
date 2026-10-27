@@ -1,1676 +1,1042 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WAH-VAS // Work at Height Vertigo & Acrophobia Assessment Simulator</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- A-Frame 1.6.0 WebXR & Three.js Engine (Loaded in <head> before components & scene) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Work at Height — Vertigo & Acrophobia Assessment Simulator</title>
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-
   <style>
-    html, body {
+    :root {
+      --bg-glass: rgba(15, 23, 42, 0.86);
+      --border-glass: rgba(148, 163, 184, 0.25);
+      --accent: #38bdf8;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --ok: #22c55e;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #090d16;
-      font-family: 'Inter', sans-serif;
       user-select: none;
     }
-    .mono {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    /* Explicit Fullscreen Canvas Rule to prevent collapsed/blank A-Frame viewport */
-    a-scene {
-      display: block;
+
+    html, body {
       width: 100vw;
       height: 100vh;
-      position: fixed;
+      overflow: hidden;
+      background-color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      color: var(--text);
+    }
+
+    a-scene {
+      position: fixed !important;
       top: 0;
       left: 0;
+      width: 100vw !important;
+      height: 100vh !important;
       z-index: 1;
     }
-    .glass-panel {
-      background: rgba(11, 17, 30, 0.82);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 12px 32px 0 rgba(0, 0, 0, 0.55);
+
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      width: 360px;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-glass);
+      border-radius: 8px;
+      padding: 14px;
+      z-index: 100;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     }
-    .glass-btn {
-      background: rgba(30, 41, 59, 0.78);
-      border: 1px solid rgba(148, 163, 184, 0.25);
+
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-glass);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .hud-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(34, 197, 94, 0.2);
+      color: var(--ok);
+      border: 1px solid var(--ok);
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .metric-box {
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 6px;
+      padding: 8px;
+    }
+
+    .metric-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+
+    .metric-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #sway-canvas {
+      width: 100%;
+      height: 44px;
+      background: rgba(2, 6, 23, 0.75);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 4px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .btn {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--border-glass);
+      color: var(--text);
+      padding: 7px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
       transition: all 0.15s ease;
+      text-align: center;
     }
-    .glass-btn:hover {
-      background: rgba(51, 65, 85, 0.92);
-      border-color: rgba(56, 189, 248, 0.65);
+
+    .btn:hover {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.2);
     }
-    .glass-btn.active {
-      background: rgba(245, 158, 11, 0.24);
-      border-color: #f59e0b;
-      color: #fbbf24;
+
+    .btn.active {
+      background: var(--accent);
+      color: #020617;
+      border-color: var(--accent);
     }
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.6); border-radius: 3px; }
-    /* Style A-Frame VR Button */
-    .a-enter-vr-button {
-      bottom: 18px !important;
-      right: 18px !important;
-      z-index: 40 !important;
-      background-color: #f59e0b !important;
-      border-radius: 8px !important;
-      font-family: 'Inter', sans-serif !important;
-      font-weight: 700 !important;
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .btn-warn {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+
+    .btn-danger {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .instructions {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+      border-top: 1px solid var(--border-glass);
+      padding-top: 8px;
+      margin-top: 6px;
     }
   </style>
 
   <script>
-    // ============================================================================
-    // 1. GLOBAL STATE & ASSESSMENT STAGES (1 to 5)
-    // ============================================================================
-    window.SIM_STATE = {
-      currentStage: 1, // 1..5
-      currentAltitude: 0.0,
-      targetAltitude: 0.0,
-      isMoving: false,
-      instantSway: 1.15,
-      currentPitchDeg: 0,
-      plankExtended: false,
-      plankCurrentZ: -0.9, // Retracted under cabin
-      stressors: {
-        wind: false,
-        sway: false,
-        rails: true // true = Guarded, false = Dropped/Unguarded
-      },
-      sparklineHistory: new Array(60).fill(1.15),
-      stages: {
-        1: {
-          stageNum: 1,
-          name: 'Stage 1: Ground Baseline Calibration',
-          shortName: '0.0m Ground',
-          altitude: 0.0,
-          instruction: 'Calibrate baseline postural stability at 0.0m. Hover mouse or gaze at Downward Target (1A) and Horizon Target (1B) for 2.0s.',
-          totalTargets: 2,
-          verifiedTargets: [],
-          exposureTime: 0,
-          swaySamples: [1.15],
-          meanSway: 1.15,
-          peakSway: 1.35
-        },
-        2: {
-          stageNum: 2,
-          name: 'Stage 2: Low-Level Gantry Access',
-          shortName: '5.0m Gantry',
-          altitude: 5.0,
-          instruction: 'Low-level elevation check at 5.0m. Look over the front edge to scan Over-Edge Target (2A) and Horizon Target (2B).',
-          totalTargets: 2,
-          verifiedTargets: [],
-          exposureTime: 0,
-          swaySamples: [1.20],
-          meanSway: 1.20,
-          peakSway: 1.45
-        },
-        3: {
-          stageNum: 3,
-          name: 'Stage 3: Mid-Tower Lattice Platform',
-          shortName: '15.0m Lattice',
-          altitude: 15.0,
-          instruction: 'Open-grating look-down test at 15.0m. Verify Sub-Grating Target (3A), Over-Edge Target (3B), and Horizon Marker (3C).',
-          totalTargets: 3,
-          verifiedTargets: [],
-          exposureTime: 0,
-          swaySamples: [1.30],
-          meanSway: 1.30,
-          peakSway: 1.65
-        },
-        4: {
-          stageNum: 4,
-          name: 'Stage 4: High-Level Exposed Catwalk',
-          shortName: '30.0m Catwalk',
-          altitude: 30.0,
-          instruction: 'High-altitude exposure at 30.0m (Guardrail drop unlocked). Verify Deep Drop Target (4A), Side Drop (4B), and Horizon (4C).',
-          totalTargets: 3,
-          verifiedTargets: [],
-          exposureTime: 0,
-          swaySamples: [1.45],
-          meanSway: 1.45,
-          peakSway: 1.90
-        },
-        5: {
-          stageNum: 5,
-          name: 'Stage 5: Summit Cantilever Plank Exposure',
-          shortName: '60.0m Summit',
-          altitude: 60.0,
-          instruction: 'Peak 60.0m summit evaluation. Extend the 3.5m Aluminum Cantilever Plank, step out to the tip, and verify 5A (Plank Tip), 5B (Abyss), and 5C (Horizon).',
-          totalTargets: 3,
-          verifiedTargets: [],
-          exposureTime: 0,
-          swaySamples: [1.60],
-          meanSway: 1.60,
-          peakSway: 2.20
-        }
-      }
-    };
-
-    // ============================================================================
-    // 2. THREE.JS PROCEDURAL CANVAS TEXTURE CACHE (Zero External Image Failures)
-    // ============================================================================
-    window.PROC_TEXTURES = {
+    // =========================================================
+    // 1. PROCEDURAL TEXTURES & MATERIALS (REGISTERED IN HEAD)
+    // =========================================================
+    const TextureFactory = {
       cache: {},
-      getTexture: function (type, repeatX, repeatY) {
-        const key = `${type}_${repeatX}_${repeatY}`;
-        if (this.cache[key]) return this.cache[key];
 
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+      getGrating() {
+        if (this.cache.grating) return this.cache.grating;
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, 256, 256);
 
-        if (type === 'grating') {
-          // Transparent open-steel industrial grating so user sees ground beneath feet
-          canvas.width = 256;
-          canvas.height = 256;
-          ctx.clearRect(0, 0, 256, 256);
-
-          // Load-bearing steel bars
-          ctx.fillStyle = '#334155';
-          for (let x = 0; x < 256; x += 32) {
-            ctx.fillRect(x, 0, 8, 256);
-          }
-          // Cross-twisted rods
-          ctx.fillStyle = '#475569';
-          for (let y = 0; y < 256; y += 32) {
-            ctx.fillRect(0, y, 256, 6);
-          }
-          // Specular metallic highlights
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1;
-          for (let i = 0; i < 256; i += 32) {
-            ctx.strokeRect(i, 0, 8, 256);
-          }
-        } else if (type === 'ground') {
-          // High-contrast industrial compound concrete & parallax grid
-          canvas.width = 512;
-          canvas.height = 512;
-          ctx.fillStyle = '#161e2e';
-          ctx.fillRect(0, 0, 512, 512);
-          ctx.strokeStyle = '#253248';
-          ctx.lineWidth = 2;
-          for (let i = 0; i <= 512; i += 64) {
-            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
-          }
-          ctx.strokeStyle = '#3b4f6b';
-          ctx.lineWidth = 5;
-          ctx.strokeRect(0, 0, 512, 512);
-        } else if (type === 'hazard') {
-          // High-visibility safety yellow/black chevron stripes
-          canvas.width = 256;
-          canvas.height = 256;
-          ctx.fillStyle = '#eab308';
-          ctx.fillRect(0, 0, 256, 256);
-          ctx.fillStyle = '#0f172a';
-          for (let i = -256; i < 512; i += 64) {
-            ctx.beginPath();
-            ctx.moveTo(i, 0);
-            ctx.lineTo(i + 32, 0);
-            ctx.lineTo(i - 224, 256);
-            ctx.lineTo(i - 256, 256);
-            ctx.closePath();
-            ctx.fill();
-          }
-        } else if (type === 'plank') {
-          // Brushed aluminum & anti-slip tread cantilever plank texture
-          canvas.width = 256;
-          canvas.height = 256;
-          ctx.fillStyle = '#94a3b8';
-          ctx.fillRect(0, 0, 256, 256);
-          ctx.fillStyle = '#cbd5e1';
-          for (let x = 0; x < 256; x += 16) {
-            ctx.fillRect(x, 0, 6, 256);
-          }
-          // Anti-slip dark grit ribs
-          ctx.fillStyle = '#1e293b';
-          for (let y = 12; y < 256; y += 36) {
-            ctx.fillRect(18, y, 220, 12);
-          }
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 10;
+        for (let i = 0; i <= 256; i += 32) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(256, i); ctx.stroke();
+        }
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 3;
+        for (let i = 0; i <= 256; i += 32) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 256); ctx.stroke();
         }
 
-        const tex = new THREE.CanvasTexture(canvas);
+        const tex = new THREE.CanvasTexture(c);
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(repeatX || 1, repeatY || 1);
-        tex.needsUpdate = true;
-        this.cache[key] = tex;
+        this.cache.grating = tex;
+        return tex;
+      },
+
+      getHazard() {
+        if (this.cache.hazard) return this.cache.hazard;
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#eab308';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.fillStyle = '#0f172a';
+        for (let i = -256; i < 512; i += 64) {
+          ctx.beginPath();
+          ctx.moveTo(i, 0);
+          ctx.lineTo(i + 32, 0);
+          ctx.lineTo(i - 224, 256);
+          ctx.lineTo(i - 256, 256);
+          ctx.closePath();
+          ctx.fill();
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        this.cache.hazard = tex;
+        return tex;
+      },
+
+      getGround() {
+        if (this.cache.ground) return this.cache.ground;
+        const c = document.createElement('canvas');
+        c.width = 512;
+        c.height = 512;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 3;
+        for (let i = 0; i <= 512; i += 64) {
+          ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 512); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(512, i); ctx.stroke();
+        }
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        this.cache.ground = tex;
+        return tex;
+      },
+
+      getPlank() {
+        if (this.cache.plank) return this.cache.plank;
+        const c = document.createElement('canvas');
+        c.width = 256;
+        c.height = 256;
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.fillStyle = '#92400e';
+        for (let i = 0; i < 256; i += 16) {
+          ctx.fillRect(i, 0, 8, 256);
+        }
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(0, 0, 14, 256);
+        ctx.fillRect(242, 0, 14, 256);
+        const tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        this.cache.plank = tex;
+        return tex;
+      },
+
+      getFallbackSky() {
+        if (this.cache.sky) return this.cache.sky;
+        const c = document.createElement('canvas');
+        c.width = 1024;
+        c.height = 512;
+        const ctx = c.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 512);
+        grad.addColorStop(0.0, '#0f172a');
+        grad.addColorStop(0.45, '#38bdf8');
+        grad.addColorStop(0.50, '#e2e8f0');
+        grad.addColorStop(0.55, '#475569');
+        grad.addColorStop(1.0, '#1e293b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 1024, 512);
+        const tex = new THREE.CanvasTexture(c);
+        this.cache.sky = tex;
         return tex;
       }
     };
 
-    // ============================================================================
-    // 3. CUSTOM A-FRAME COMPONENTS (Registered in <head> BEFORE <a-scene>)
-    // ============================================================================
-
-    // 3A. Procedural Texture Component (Applies THREE.CanvasTexture directly to mesh)
     AFRAME.registerComponent('procedural-material', {
       schema: {
-        type: { type: 'string', default: 'ground' },
-        repeatX: { type: 'number', default: 1 },
-        repeatY: { type: 'number', default: 1 },
-        transparent: { type: 'boolean', default: false }
+        type: { type: 'string', default: 'grating' },
+        repeatX: { type: 'number', default: 4 },
+        repeatY: { type: 'number', default: 4 }
       },
       init: function () {
         this.applyTexture = this.applyTexture.bind(this);
-        if (this.el.getObject3D('mesh')) {
-          this.applyTexture();
-        } else {
-          this.el.addEventListener('object3dset', this.applyTexture);
-        }
+        this.el.addEventListener('loaded', this.applyTexture);
+        if (this.el.getObject3D('mesh')) this.applyTexture();
       },
       applyTexture: function () {
         const mesh = this.el.getObject3D('mesh');
         if (!mesh) return;
-        const tex = window.PROC_TEXTURES.getTexture(this.data.type, this.data.repeatX, this.data.repeatY);
+        let baseTex = null;
+        if (this.data.type === 'grating') baseTex = TextureFactory.getGrating();
+        else if (this.data.type === 'hazard') baseTex = TextureFactory.getHazard();
+        else if (this.data.type === 'ground') baseTex = TextureFactory.getGround();
+        else if (this.data.type === 'plank') baseTex = TextureFactory.getPlank();
+        if (!baseTex) return;
+
+        const tex = baseTex.clone();
+        tex.needsUpdate = true;
+        tex.repeat.set(this.data.repeatX, this.data.repeatY);
+
         mesh.traverse((node) => {
           if (node.isMesh) {
             node.material = new THREE.MeshStandardMaterial({
               map: tex,
-              roughness: this.data.type === 'plank' ? 0.45 : 0.75,
-              metalness: this.data.type === 'grating' || this.data.type === 'plank' ? 0.55 : 0.15,
-              transparent: this.data.transparent,
-              alphaTest: this.data.transparent ? 0.5 : 0,
-              side: THREE.DoubleSide
+              transparent: this.data.type === 'grating',
+              alphaTest: this.data.type === 'grating' ? 0.25 : 0,
+              side: THREE.DoubleSide,
+              roughness: 0.65,
+              metalness: this.data.type === 'grating' ? 0.6 : 0.2
             });
-            node.material.needsUpdate = true;
           }
         });
       }
     });
 
-    // 3B. Procedural 65m Steel Lattice Tower & Compound Builder
+    // =========================================================
+    // 2. INDUSTRIAL TOWER & ENVIRONMENT BUILDER
+    // =========================================================
     AFRAME.registerComponent('industrial-tower-builder', {
       init: function () {
-        const el = this.el;
-        let html = '';
+        const root = this.el;
+        const height = 65;
+        const tierStep = 5;
 
-        // 4 Main Vertical Corner Steel Columns (66m tall) around elevator shaft
-        const colCoords = [
-          [-2.15, 33, -2.15],
-          [2.15, 33, -2.15],
-          [-2.15, 33, 2.15],
-          [2.15, 33, 2.15]
+        // 4 Main Corner Columns (centered at Z = -2.1, Platform travels cleanly on south face Z = 0)
+        const cols = [
+          [-1.6, -0.7],
+          [ 1.6, -0.7],
+          [-1.6, -3.5],
+          [ 1.6, -3.5]
         ];
-        colCoords.forEach(([x, y, z]) => {
-          html += `<a-cylinder position="${x} ${y} ${z}" radius="0.18" height="66" color="#334155"></a-cylinder>`;
+
+        cols.forEach(([x, z]) => {
+          const col = document.createElement('a-box');
+          col.setAttribute('position', `${x} ${height / 2} ${z}`);
+          col.setAttribute('width', '0.24');
+          col.setAttribute('height', height);
+          col.setAttribute('depth', '0.24');
+          col.setAttribute('color', '#334155');
+          root.appendChild(col);
         });
 
-        // Horizontal Ring Girders & Diagonal Cross-Bracing every 5 meters up to 65m
-        for (let h = 5; h <= 65; h += 5) {
-          const isAviationBand = (h % 15 === 0);
-          const girderColor = isAviationBand ? '#dc2626' : '#475569';
-          const braceColor = isAviationBand ? '#f87171' : '#64748b';
+        // Horizontal Girders & Height Marker Placards every 5m
+        for (let y = 5; y <= height; y += tierStep) {
+          const frontBeam = document.createElement('a-box');
+          frontBeam.setAttribute('position', `0 ${y} -0.7`);
+          frontBeam.setAttribute('width', '3.4');
+          frontBeam.setAttribute('height', '0.16');
+          frontBeam.setAttribute('depth', '0.16');
+          frontBeam.setAttribute('color', y % 15 === 0 ? '#f59e0b' : '#475569');
+          root.appendChild(frontBeam);
 
-          html += `
-            <!-- Horizontal Girders at ${h}m -->
-            <a-box position="0 ${h} 2.15" width="4.4" height="0.16" depth="0.16" color="${girderColor}"></a-box>
-            <a-box position="-2.15 ${h} 0" width="0.16" height="0.16" depth="4.4" color="${girderColor}"></a-box>
-            <a-box position="2.15 ${h} 0" width="0.16" height="0.16" depth="4.4" color="${girderColor}"></a-box>
-            <!-- Diagonal Lattice Bracing on Left/Right/Back Faces -->
-            <a-box position="-2.15 ${h - 2.5} 0" rotation="48 0 0" width="0.08" height="0.08" depth="6.2" color="${braceColor}"></a-box>
-            <a-box position="2.15 ${h - 2.5} 0" rotation="-48 0 0" width="0.08" height="0.08" depth="6.2" color="${braceColor}"></a-box>
-            <a-box position="0 ${h - 2.5} 2.15" rotation="0 0 48" width="0.08" height="6.2" depth="0.08" color="${braceColor}"></a-box>
-          `;
+          const backBeam = document.createElement('a-box');
+          backBeam.setAttribute('position', `0 ${y} -3.5`);
+          backBeam.setAttribute('width', '3.4');
+          backBeam.setAttribute('height', '0.16');
+          backBeam.setAttribute('depth', '0.16');
+          backBeam.setAttribute('color', '#475569');
+          root.appendChild(backBeam);
+
+          [-1.6, 1.6].forEach((x) => {
+            const sideBeam = document.createElement('a-box');
+            sideBeam.setAttribute('position', `${x} ${y} -2.1`);
+            sideBeam.setAttribute('width', '0.14');
+            sideBeam.setAttribute('height', '0.14');
+            sideBeam.setAttribute('depth', '2.8');
+            sideBeam.setAttribute('color', '#475569');
+            root.appendChild(sideBeam);
+          });
+
+          // Elevation sign
+          const sign = document.createElement('a-plane');
+          sign.setAttribute('position', `-2.15 ${y} -0.7`);
+          sign.setAttribute('width', '0.8');
+          sign.setAttribute('height', '0.4');
+          sign.setAttribute('color', '#0f172a');
+          const txt = document.createElement('a-text');
+          txt.setAttribute('value', `${y}m`);
+          txt.setAttribute('align', 'center');
+          txt.setAttribute('color', '#38bdf8');
+          txt.setAttribute('width', '4');
+          txt.setAttribute('position', '0 0 0.02');
+          sign.appendChild(txt);
+          root.appendChild(sign);
         }
 
-        // Safety Ladder & Cage on Left Column
-        for (let ch = 2; ch <= 64; ch += 2) {
-          html += `<a-torus position="-2.75 ${ch} 1.2" rotation="90 0 0" radius="0.45" radius-tubular="0.02" color="#64748b"></a-torus>`;
-        }
-        html += `<a-cylinder position="-2.4 ${32} 1.2" radius="0.03" height="64" color="#94a3b8"></a-cylinder>`;
-
-        // Stage Outrigger Gantries & Elevation Signboards at 5m, 15m, 30m, 60m
-        const stageLevels = [
-          { h: 5, label: 'STAGE 2 // 5.0m' },
-          { h: 15, label: 'STAGE 3 // 15.0m' },
-          { h: 30, label: 'STAGE 4 // 30.0m' },
-          { h: 60, label: 'STAGE 5 // 60.0m' }
+        // Ground Drop Zone Bullseye directly beneath the 60m Plank
+        const rings = [
+          { r: 4.5, c: '#ef4444', y: 0.02 },
+          { r: 3.0, c: '#f8fafc', y: 0.03 },
+          { r: 1.5, c: '#ef4444', y: 0.04 }
         ];
-        stageLevels.forEach(({ h, label }) => {
-          html += `
-            <a-box position="-3.5 ${h} 0" width="2.4" height="0.18" depth="4.2" color="#1e293b"></a-box>
-            <a-box position="3.5 ${h} 0" width="2.4" height="0.18" depth="4.2" color="#1e293b"></a-box>
-            <a-box position="3.1 ${h + 1.45} -2.0" width="1.75" height="0.55" depth="0.08" color="#0f172a"></a-box>
-            <a-text value="${label}" position="3.1 ${h + 1.45} -1.94" align="center" width="3.6" color="#f59e0b"></a-text>
-          `;
+        rings.forEach((ring) => {
+          const cyl = document.createElement('a-cylinder');
+          cyl.setAttribute('position', `0 ${ring.y} 3.2`);
+          cyl.setAttribute('radius', ring.r);
+          cyl.setAttribute('height', '0.02');
+          cyl.setAttribute('color', ring.c);
+          root.appendChild(cyl);
         });
-
-        // Summit Aviation Obstruction Flashing Red Beacons at 66m
-        html += `
-          <a-sphere position="-2.15 66.3 -2.15" radius="0.28" color="#ef4444" material="shader: flat"
-                    animation="property: components.material.material.color; type: color; from: #ef4444; to: #450a0a; dur: 700; dir: alternate; loop: true"></a-sphere>
-          <a-sphere position="2.15 66.3 -2.15" radius="0.28" color="#ef4444" material="shader: flat"
-                    animation="property: components.material.material.color; type: color; from: #ef4444; to: #450a0a; dur: 700; dir: alternate; loop: true"></a-sphere>
-        `;
-
-        el.innerHTML = html;
       }
     });
 
-    // 3C. 2-Second Dwell / Gaze & Mouse-Hover Verification Target Component
+    // =========================================================
+    // 3. GAZE VERIFICATION SPHERES & VR BUTTONS
+    // =========================================================
     AFRAME.registerComponent('gaze-target', {
       schema: {
-        id: { type: 'string' },
-        stage: { type: 'int' },
-        label: { type: 'string' },
-        title: { type: 'string' }
+        id: { type: 'string', default: 'T1' }
       },
       init: function () {
-        this.isHovered = false;
-        this.progress = 0;
+        this.hovering = false;
+        this.dwell = 0;
         this.verified = false;
-        this.scanDuration = 2000; // 2.0 seconds dwell
 
-        // Outer High-Contrast Ring
         this.ring = document.createElement('a-ring');
-        this.ring.setAttribute('radius-inner', '0.62');
-        this.ring.setAttribute('radius-outer', '0.88');
-        this.ring.setAttribute('color', '#f59e0b');
+        this.ring.setAttribute('radius-inner', '0.38');
+        this.ring.setAttribute('radius-outer', '0.46');
+        this.ring.setAttribute('color', '#38bdf8');
         this.ring.setAttribute('material', 'shader: flat; side: double');
+        this.ring.setAttribute('visible', 'false');
         this.el.appendChild(this.ring);
 
-        // Progress Fill Ring
-        this.progRing = document.createElement('a-ring');
-        this.progRing.setAttribute('radius-inner', '0.38');
-        this.progRing.setAttribute('radius-outer', '0.58');
-        this.progRing.setAttribute('color', '#38bdf8');
-        this.progRing.setAttribute('theta-length', '0.1');
-        this.progRing.setAttribute('material', 'shader: flat; side: double');
-        this.el.appendChild(this.progRing);
-
-        // Inner Core Hit Disc (Ensures reliable raycaster intersection)
-        this.core = document.createElement('a-circle');
-        this.core.setAttribute('radius', '0.85');
-        this.core.setAttribute('color', '#0f172a');
-        this.core.setAttribute('material', 'shader: flat; side: double; opacity: 0.85');
-        this.core.classList.add('interactable');
-        this.el.appendChild(this.core);
-
-        // Label Text
-        this.text = document.createElement('a-text');
-        this.text.setAttribute('value', this.data.label);
-        this.text.setAttribute('align', 'center');
-        this.text.setAttribute('color', '#ffffff');
-        this.text.setAttribute('width', '6.5');
-        this.text.setAttribute('position', '0 0 0.05');
-        this.el.appendChild(this.text);
-
-        // Hover / Gaze Listeners
         this.el.addEventListener('mouseenter', () => {
-          if (!this.verified && window.SIM_STATE.currentStage === this.data.stage) {
-            this.isHovered = true;
-            this.ring.setAttribute('color', '#38bdf8');
-            if (window.SFX) window.SFX.playLockTone(440);
-          }
+          if (this.verified) return;
+          this.hovering = true;
+          this.ring.setAttribute('visible', 'true');
         });
 
         this.el.addEventListener('mouseleave', () => {
-          this.isHovered = false;
+          this.hovering = false;
           if (!this.verified) {
-            this.ring.setAttribute('color', '#f59e0b');
+            this.dwell = 0;
+            this.ring.setAttribute('visible', 'false');
+            this.el.setAttribute('scale', '1 1 1');
           }
         });
+
+        this.el.addEventListener('click', () => {
+          if (!this.verified) this.completeTarget();
+        });
       },
-      tick: function (time, timeDelta) {
-        if (!window.SIM_STATE) return;
-
-        // Only show targets belonging to the active stage for visual clarity
-        const isCurrentStage = (window.SIM_STATE.currentStage === this.data.stage);
-        if (this.el.object3D.visible !== isCurrentStage) {
-          this.el.object3D.visible = isCurrentStage;
-        }
-        if (!isCurrentStage || this.verified) return;
-
-        if (this.isHovered) {
-          this.progress += timeDelta;
-          const ratio = Math.min(1, this.progress / this.scanDuration);
-          this.progRing.setAttribute('theta-length', (ratio * 360).toFixed(1));
-
-          const hudScanBar = document.getElementById('hud-scan-progress');
-          if (hudScanBar) hudScanBar.style.width = `${(ratio * 100).toFixed(0)}%`;
-
-          if (this.progress >= this.scanDuration) {
-            this.completeScan();
-          }
-        } else if (this.progress > 0) {
-          this.progress = Math.max(0, this.progress - timeDelta * 1.5);
-          const ratio = this.progress / this.scanDuration;
-          this.progRing.setAttribute('theta-length', Math.max(0.1, ratio * 360).toFixed(1));
+      tick: function (t, dt) {
+        if (!this.hovering || this.verified) return;
+        this.dwell += dt / 1000;
+        const s = 1 + Math.sin(t * 0.015) * 0.1;
+        this.el.setAttribute('scale', `${s} ${s} ${s}`);
+        if (this.dwell >= 1.5) {
+          this.completeTarget();
         }
       },
-      completeScan: function () {
+      completeTarget: function () {
         this.verified = true;
-        this.isHovered = false;
-        this.ring.setAttribute('color', '#10b981');
-        this.progRing.setAttribute('color', '#10b981');
-        this.progRing.setAttribute('theta-length', '360');
-        this.text.setAttribute('value', 'VERIFIED');
-        this.text.setAttribute('width', '4.2');
-        this.text.setAttribute('color', '#10b981');
-        if (window.SFX) window.SFX.playSuccessTone();
-        if (window.SIM_APP) window.SIM_APP.onTargetVerified(this.data.id, this.data.stage);
+        this.hovering = false;
+        this.el.setAttribute('color', '#22c55e');
+        this.el.setAttribute('scale', '1.15 1.15 1.15');
+        this.ring.setAttribute('color', '#22c55e');
+        this.ring.setAttribute('visible', 'true');
+        const sys = document.querySelector('a-scene').components['elevator-telemetry-system'];
+        if (sys) sys.onTargetVerified(this.data.id);
       },
       resetTarget: function () {
         this.verified = false;
-        this.progress = 0;
-        this.isHovered = false;
-        this.ring.setAttribute('color', '#f59e0b');
-        this.progRing.setAttribute('color', '#38bdf8');
-        this.progRing.setAttribute('theta-length', '0.1');
-        this.text.setAttribute('value', this.data.label);
-        this.text.setAttribute('width', '6.5');
-        this.text.setAttribute('color', '#ffffff');
+        this.hovering = false;
+        this.dwell = 0;
+        this.el.setAttribute('color', '#f97316');
+        this.el.setAttribute('scale', '1 1 1');
+        this.ring.setAttribute('color', '#38bdf8');
+        this.ring.setAttribute('visible', 'false');
       }
     });
 
-    // 3D. In-World VR / Desktop 3D Control Button Component
     AFRAME.registerComponent('vr-ui-btn', {
       schema: {
         action: { type: 'string' },
-        param: { type: 'string' }
+        param: { type: 'string', default: '' }
       },
       init: function () {
+        const baseColor = this.el.getAttribute('color') || '#1e293b';
         this.el.addEventListener('mouseenter', () => {
-          this.el.setAttribute('scale', '1.06 1.06 1.06');
+          this.el.setAttribute('color', '#0284c7');
         });
         this.el.addEventListener('mouseleave', () => {
-          this.el.setAttribute('scale', '1 1 1');
+          this.el.setAttribute('color', baseColor);
         });
         this.el.addEventListener('click', () => {
-          if (window.SFX) window.SFX.playClick();
-          if (window.SIM_APP) window.SIM_APP.handleVRCommand(this.data.action, this.data.param);
+          const sys = document.querySelector('a-scene').components['elevator-telemetry-system'];
+          if (sys) sys.handleAction(this.data.action, this.data.param);
         });
       }
     });
 
-    // 3E. Master Elevator System, Retractable Plank & 60Hz Telemetry Loop
+    // =========================================================
+    // 4. CORE ELEVATOR, AUDIO & 60HZ SWAY TELEMETRY SYSTEM
+    // =========================================================
     AFRAME.registerComponent('elevator-telemetry-system', {
       init: function () {
-        this.lastPos = new THREE.Vector3();
-        this.lastRot = new THREE.Euler();
-        this.initialized = false;
-        this.lastUIUpdate = 0;
-      },
-      tick: function (time, timeDelta) {
-        if (!window.SIM_STATE || !timeDelta) return;
-        const dt = Math.min(0.1, timeDelta / 1000);
-        const camEl = document.getElementById('head-camera');
-        const liftEl = document.getElementById('elevator-cabin');
-        const plankEl = document.getElementById('cantilever-plank');
-        if (!camEl || !liftEl) return;
-
-        // 1. Smoothly Interpolate Elevator Platform Altitude
-        const currentY = liftEl.object3D.position.y;
-        const targetY = window.SIM_STATE.targetAltitude;
-        let nextY = currentY;
-
-        if (Math.abs(targetY - currentY) > 0.02) {
-          const speed = Math.max(2.5, Math.abs(targetY - currentY) * 1.65);
-          const dir = Math.sign(targetY - currentY);
-          nextY = currentY + dir * Math.min(Math.abs(targetY - currentY), speed * dt);
-          window.SIM_STATE.isMoving = true;
-          if (window.SFX) window.SFX.setLiftMotorActive(true, Math.abs(targetY - currentY));
-        } else {
-          nextY = targetY;
-          if (window.SIM_STATE.isMoving && window.SFX) {
-            window.SFX.setLiftMotorActive(false, 0);
-          }
-          window.SIM_STATE.isMoving = false;
-        }
-        window.SIM_STATE.currentAltitude = nextY;
-
-        // 2. Smoothly Interpolate Retractable Aluminum Cantilever Plank (-0.9m retracted -> -3.5m extended)
-        if (plankEl) {
-          const targetZ = window.SIM_STATE.plankExtended ? -3.55 : -0.85;
-          const curZ = plankEl.object3D.position.z;
-          if (Math.abs(targetZ - curZ) > 0.01) {
-            plankEl.object3D.position.z = THREE.MathUtils.lerp(curZ, targetZ, dt * 4.0);
-          }
-        }
-
-        // 3. Apply Structural Resonance / Wind Gust Sway if Stressor Active
-        let swayOffsetX = 0;
-        let swayOffsetZ = 0;
-        let swayRotZ = 0;
-        if ((window.SIM_STATE.stressors.sway || window.SIM_STATE.stressors.wind) && nextY > 0.5) {
-          const altFactor = Math.min(1.8, nextY / 30);
-          const gustMult = window.SIM_STATE.stressors.wind ? 1.35 : 1.0;
-          swayOffsetX = Math.sin(time * 0.0024) * 0.048 * altFactor * gustMult + Math.sin(time * 0.018) * 0.008;
-          swayOffsetZ = Math.cos(time * 0.0019) * 0.045 * altFactor * gustMult;
-          swayRotZ = Math.sin(time * 0.0021) * 0.011 * altFactor * gustMult;
-        }
-
-        liftEl.object3D.position.set(swayOffsetX, nextY, swayOffsetZ);
-        liftEl.object3D.rotation.set(0, 0, swayRotZ);
-
-        // 4. 60Hz Postural Sway & Head Stability Telemetry
-        const pos = camEl.object3D.position;
-        const rot = camEl.object3D.rotation;
-
-        if (!this.initialized) {
-          this.lastPos.copy(pos);
-          this.lastRot.copy(rot);
-          this.initialized = true;
-          return;
-        }
-
-        const distMM = pos.distanceTo(this.lastPos) * 1000;
-        const dPitch = Math.abs(THREE.MathUtils.radToDeg(rot.x - this.lastRot.x));
-        const dYaw = Math.abs(THREE.MathUtils.radToDeg(rot.y - this.lastRot.y));
-        const dRoll = Math.abs(THREE.MathUtils.radToDeg(rot.z - this.lastRot.z));
-        const rotDeltaDeg = Math.sqrt(dPitch * dPitch + dYaw * dYaw + dRoll * dRoll);
-
-        this.lastPos.copy(pos);
-        this.lastRot.copy(rot);
-
-        // Pitch Angle
-        window.SIM_STATE.currentPitchDeg = THREE.MathUtils.radToDeg(rot.x);
-
-        // Baseline physiological micro-tremor + user head/mouse movement + altitude stressor
-        const altBaseline = 1.05 + (nextY / 60) * 0.55 + (window.SIM_STATE.stressors.wind ? 0.45 : 0);
-        const rawSway = altBaseline + (distMM * 0.35) + (rotDeltaDeg * 0.45) + Math.sin(time * 0.007) * 0.12;
-        window.SIM_STATE.instantSway = THREE.MathUtils.lerp(window.SIM_STATE.instantSway, Math.min(28, rawSway), 0.14);
-
-        // Record Stage Telemetry when Elevator is on station
-        const stg = window.SIM_STATE.stages[window.SIM_STATE.currentStage];
-        if (!window.SIM_STATE.isMoving && stg) {
-          stg.exposureTime += dt;
-          stg.swaySamples.push(window.SIM_STATE.instantSway);
-          if (stg.swaySamples.length > 360) stg.swaySamples.shift();
-
-          const sum = stg.swaySamples.reduce((a, b) => a + b, 0);
-          stg.meanSway = sum / stg.swaySamples.length;
-          stg.peakSway = Math.max(stg.peakSway, window.SIM_STATE.instantSway);
-        }
-
-        // Update 2D HUD, Sparkline & 3D Panel every 100ms
-        if (time - this.lastUIUpdate > 100) {
-          window.SIM_STATE.sparklineHistory.push(window.SIM_STATE.instantSway);
-          if (window.SIM_STATE.sparklineHistory.length > 60) {
-            window.SIM_STATE.sparklineHistory.shift();
-          }
-          if (window.SIM_APP) {
-            window.SIM_APP.refreshTelemetryDisplays();
-            window.SIM_APP.drawSparkline();
-          }
-          this.lastUIUpdate = time;
-        }
-      }
-    });
-  </script>
-</head>
-
-<body class="w-screen h-screen relative select-none text-slate-100">
-
-  <!-- ========================================================================== -->
-  <!-- 2D INSTRUCTOR / DESKTOP GLASSMORPHISM HUD OVERLAY (z-index: 20)            -->
-  <!-- ========================================================================== -->
-  <div id="hud-overlay" class="fixed inset-0 pointer-events-none z-20 flex flex-col justify-between p-3 sm:p-4">
-    
-    <!-- Top Bar: Brand Header + Real-time Telemetry + 60Hz Sparkline -->
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      
-      <!-- Brand / Protocol Header -->
-      <div class="glass-panel rounded-xl px-4 py-2.5 pointer-events-auto flex items-center gap-3.5 border-l-4 border-l-amber-500">
-        <div class="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold mono text-base">
-          WAH
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] font-bold uppercase tracking-widest text-amber-400 mono">OSHA / ISO-WAH</span>
-            <span id="status-badge" class="px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mono">STATION LOCKED</span>
-          </div>
-          <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">Work at Height Vertigo &amp; Acrophobia Simulator</h1>
-        </div>
-      </div>
-
-      <!-- Real-Time Biometric & Vestibular Telemetry + Sparkline -->
-      <div class="glass-panel rounded-xl px-4 py-2 pointer-events-auto flex flex-wrap items-center gap-4 sm:gap-6">
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Elevation</div>
-          <div class="text-lg sm:text-xl font-bold mono text-amber-400" id="hud-altitude">0.0 m</div>
-        </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Exposure</div>
-          <div class="text-lg sm:text-xl font-bold mono text-sky-400" id="hud-exposure">0.0 s</div>
-        </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Postural Sway</div>
-          <div class="text-lg sm:text-xl font-bold mono text-emerald-400" id="hud-sway">1.2 mm</div>
-        </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Head Pitch</div>
-          <div class="text-lg sm:text-xl font-bold mono text-slate-200" id="hud-pitch">0°</div>
-        </div>
-        <div>
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Verified</div>
-          <div class="text-lg sm:text-xl font-bold mono text-white" id="hud-targets">0 / 2</div>
-        </div>
-        <!-- Live 60Hz Postural Sway Sparkline Graph -->
-        <div class="hidden xl:flex flex-col">
-          <div class="flex items-center justify-between text-[9px] uppercase tracking-wider text-slate-400 mono mb-0.5">
-            <span>60Hz Sway Graph</span>
-            <span id="sparkline-peak" class="text-emerald-400">STABLE</span>
-          </div>
-          <canvas id="sway-sparkline" width="135" height="32" class="rounded bg-slate-950/90 border border-slate-800"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Center Screen Dwell / Gaze Reticle Progress Feedback -->
-    <div class="self-center flex flex-col items-center pointer-events-none">
-      <div id="stage-banner" class="glass-panel px-4 py-1 rounded-full text-xs mono text-sky-300 border border-sky-500/30 mb-1.5 shadow-lg">
-        STAGE 1: GROUND BASELINE CALIBRATION (0.0m)
-      </div>
-      <div class="w-44 h-1.5 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700/70">
-        <div id="hud-scan-progress" class="h-full bg-sky-400 transition-all duration-75" style="width: 0%"></div>
-      </div>
-    </div>
-
-    <!-- Bottom Left & Right Consoles -->
-    <div class="flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-3">
-      
-      <!-- Left Console: 5 Assessment Stages & Environmental Controls -->
-      <div class="glass-panel rounded-xl p-3.5 pointer-events-auto max-w-3xl w-full space-y-2.5">
-        
-        <div class="flex flex-wrap items-center justify-between border-b border-slate-700/60 pb-1.5 gap-2">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-            Progressive Elevation Stages (1–5)
-          </span>
-          <span class="text-[11px] text-slate-400 mono">Hover mouse or center-gaze on orange targets for 2.0s</span>
-        </div>
-
-        <!-- Stage 1-5 Selector Buttons -->
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          <button onclick="window.SIM_APP.selectStage(1)" id="btn-stage-1" class="glass-btn active rounded-lg p-2 text-left">
-            <div class="text-[10px] mono text-slate-400">STAGE 1</div>
-            <div class="text-xs font-bold text-white">0.0m Ground</div>
-            <div class="text-[10px] text-emerald-400 mono mt-0.5" id="badge-stage-1">0/2 Verified</div>
-          </button>
-          <button onclick="window.SIM_APP.selectStage(2)" id="btn-stage-2" class="glass-btn rounded-lg p-2 text-left">
-            <div class="text-[10px] mono text-slate-400">STAGE 2</div>
-            <div class="text-xs font-bold text-white">5.0m Gantry</div>
-            <div class="text-[10px] text-amber-400 mono mt-0.5" id="badge-stage-2">0/2 Verified</div>
-          </button>
-          <button onclick="window.SIM_APP.selectStage(3)" id="btn-stage-3" class="glass-btn rounded-lg p-2 text-left">
-            <div class="text-[10px] mono text-slate-400">STAGE 3</div>
-            <div class="text-xs font-bold text-white">15.0m Lattice</div>
-            <div class="text-[10px] text-amber-400 mono mt-0.5" id="badge-stage-3">0/3 Verified</div>
-          </button>
-          <button onclick="window.SIM_APP.selectStage(4)" id="btn-stage-4" class="glass-btn rounded-lg p-2 text-left">
-            <div class="text-[10px] mono text-sky-400">STAGE 4</div>
-            <div class="text-xs font-bold text-white">30.0m Catwalk</div>
-            <div class="text-[10px] text-amber-400 mono mt-0.5" id="badge-stage-4">0/3 Verified</div>
-          </button>
-          <button onclick="window.SIM_APP.selectStage(5)" id="btn-stage-5" class="glass-btn rounded-lg p-2 text-left col-span-2 sm:col-span-1">
-            <div class="text-[10px] mono text-rose-400 font-bold">STAGE 5 SUMMIT</div>
-            <div class="text-xs font-bold text-white">60.0m Plank</div>
-            <div class="text-[10px] text-amber-400 mono mt-0.5" id="badge-stage-5">0/3 Verified</div>
-          </button>
-        </div>
-
-        <!-- Environmental Stressors, Retractable Plank & Emergency Reset Row -->
-        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <div class="flex flex-wrap items-center gap-1.5">
-            <button onclick="window.SIM_APP.toggleStressor('rails')" id="btn-stress-rails" class="glass-btn active px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-              <span>🚧 Guardrails:</span>
-              <span id="state-rails" class="mono text-amber-300">UP</span>
-            </button>
-            <button onclick="window.SIM_APP.togglePlank()" id="btn-plank-toggle" class="glass-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-              <span>🪜 3.5m Plank:</span>
-              <span id="state-plank" class="mono text-slate-400">RETRACTED</span>
-            </button>
-            <button onclick="window.SIM_APP.toggleStressor('wind')" id="btn-stress-wind" class="glass-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-              <span>🌬️ Wind Gusts:</span>
-              <span id="state-wind" class="mono text-slate-400">OFF</span>
-            </button>
-            <button onclick="window.SIM_APP.toggleStressor('sway')" id="btn-stress-sway" class="glass-btn px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
-              <span>📳 Sway:</span>
-              <span id="state-sway" class="mono text-slate-400">OFF</span>
-            </button>
-          </div>
-
-          <div class="flex items-center gap-1.5">
-            <button onclick="window.SIM_APP.stepOutToPlank()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 transition">
-              Step Out to Plank
-            </button>
-            <button onclick="window.SIM_APP.resetCenterPosition()" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 transition">
-              Center Cabin
-            </button>
-            <button onclick="window.SIM_APP.emergencyDescent()" class="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/50 transition">
-              Emergency 0m
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right Console: Active Checklist & Assessment Report Export -->
-      <div class="glass-panel rounded-xl p-3.5 pointer-events-auto flex flex-col justify-between gap-2 w-full lg:w-80 mr-0 lg:mr-24">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Stage Task &amp; Checklist</span>
-            <span class="text-[10px] mono text-sky-400">WASD + Mouse Drag</span>
-          </div>
-          <p id="task-desc" class="text-xs text-slate-300 leading-relaxed">
-            Calibrate baseline postural stability at 0.0m. Hover mouse or gaze at Downward Target (1A) and Horizon Target (1B) for 2.0s.
-          </p>
-        </div>
-
-        <div id="target-checklist" class="grid grid-cols-3 gap-1.5 text-[11px] mono bg-slate-900/75 rounded-lg p-2 border border-slate-800">
-          <!-- Populated dynamically per stage -->
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button onclick="window.SIM_APP.openReportModal()" class="flex-1 py-2 px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs tracking-wide uppercase transition shadow-lg">
-            Assessment Report
-          </button>
-          <button onclick="window.SIM_APP.resetAssessment()" class="py-2 px-3 rounded-lg bg-slate-800 hover:bg-rose-950/80 hover:text-rose-300 text-slate-300 border border-slate-700 text-xs font-semibold transition">
-            Reset All
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ========================================================================== -->
-  <!-- CLINICAL & OCCUPATIONAL ASSESSMENT REPORT MODAL (z-index: 50)              -->
-  <!-- ========================================================================== -->
-  <div id="report-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="glass-panel rounded-2xl max-w-3xl w-full p-6 border border-slate-700 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-start justify-between border-b border-slate-700/80 pb-4">
-        <div>
-          <span class="text-xs mono uppercase tracking-widest text-amber-400 font-bold">Occupational Safety &amp; Vestibular Report</span>
-          <h2 class="text-xl font-bold text-white mt-0.5">Work at Height Acrophobia &amp; Postural Stability Summary</h2>
-        </div>
-        <button onclick="window.SIM_APP.closeReportModal()" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold">
-          ESC / CLOSE
-        </button>
-      </div>
-
-      <!-- Overall Qualification Banner -->
-      <div id="report-verdict-box" class="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-950/40 border-emerald-500/40">
-        <div>
-          <div class="text-xs uppercase font-bold tracking-wider text-emerald-400 mono" id="report-verdict-title">QUALIFIED FOR WORK AT HEIGHT</div>
-          <p class="text-xs text-slate-300 mt-1" id="report-verdict-desc">Candidate demonstrated low postural sway variance and completed visual edge-acquisition tasks across evaluated altitudes.</p>
-        </div>
-        <div class="text-right">
-          <div class="text-[10px] uppercase text-slate-400 mono">Composite Stability Score</div>
-          <div class="text-2xl font-bold mono text-white" id="report-composite-score">96%</div>
-        </div>
-      </div>
-
-      <!-- Stage Breakdown Table -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse text-xs">
-          <thead>
-            <tr class="border-b border-slate-700 text-slate-400 mono uppercase text-[11px]">
-              <th class="py-2.5 px-3">Stage / Elevation</th>
-              <th class="py-2.5 px-3">Targets Verified</th>
-              <th class="py-2.5 px-3">Exposure Time</th>
-              <th class="py-2.5 px-3">Mean Sway Index</th>
-              <th class="py-2.5 px-3">Peak Tremor</th>
-              <th class="py-2.5 px-3 text-right">Tier Status</th>
-            </tr>
-          </thead>
-          <tbody id="report-table-body" class="divide-y divide-slate-800 mono text-slate-200">
-            <!-- Populated Dynamically -->
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Export CSV / JSON & Action Buttons -->
-      <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
-        <span id="copy-feedback" class="text-xs text-emerald-400 mono opacity-0 transition-opacity">Telemetry exported!</span>
-        <div class="flex flex-wrap items-center gap-2.5">
-          <button onclick="window.SIM_APP.exportCSV()" class="px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold mono transition">
-            Download CSV Report
-          </button>
-          <button onclick="window.SIM_APP.copyTelemetryJSON()" class="px-4 py-2 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-xs font-bold mono transition">
-            Copy JSON Telemetry
-          </button>
-          <button onclick="window.SIM_APP.closeReportModal()" class="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold uppercase transition">
-            Resume Simulator
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================================================== -->
-  <!-- 3D WEBGL & WEBXR A-FRAME SCENE (Explicit Linear Fog & High Contrast)       -->
-  <!-- ========================================================================== -->
-  <a-scene
-    elevator-telemetry-system
-    cursor="rayOrigin: mouse"
-    raycaster="objects: .interactable; far: 160"
-    xr-mode-ui="enabled: true"
-    renderer="antialias: true; colorManagement: true"
-    fog="type: linear; color: #0f172a; near: 45; far: 260"
-    background="color: #0f172a">
-
-    <!-- Dark Industrial Sky Dome -->
-    <a-sky color="#0f172a" radius="250"></a-sky>
-
-    <!-- High-Contrast Industrial Lighting -->
-    <a-light type="ambient" color="#94a3b8" intensity="0.9"></a-light>
-    <a-light type="directional" position="40 90 35" color="#ffffff" intensity="1.25"></a-light>
-    <a-light type="hemisphere" color="#38bdf8" groundColor="#0f172a" intensity="0.5"></a-light>
-
-    <!-- ======================================================================== -->
-    <!-- GROUND INDUSTRIAL COMPOUND & VERTICAL DROP ZONE (0.0m)                   -->
-    <!-- ======================================================================== -->
-    <a-entity id="ground-compound" position="0 0 0">
-      <!-- Procedural High-Contrast Industrial Concrete Grid Pad -->
-      <a-plane position="0 0 0" rotation="-90 0 0" width="220" height="220"
-               procedural-material="type: ground; repeatX: 55; repeatY: 55"></a-plane>
-
-      <!-- High-Contrast Concentric Target Bullseye directly beneath the Cantilever Plank (X:0, Z:-4.2) -->
-      <a-ring position="0 0.03 -4.2" rotation="-90 0 0" radius-inner="1.5" radius-outer="1.95" color="#ef4444" material="shader: flat"></a-ring>
-      <a-ring position="0 0.03 -4.2" rotation="-90 0 0" radius-inner="3.2" radius-outer="3.6" color="#f59e0b" material="shader: flat"></a-ring>
-      <a-ring position="0 0.03 -4.2" rotation="-90 0 0" radius-inner="5.0" radius-outer="5.3" color="#38bdf8" material="shader: flat"></a-ring>
-      <a-circle position="0 0.04 -4.2" rotation="-90 0 0" radius="0.5" color="#ef4444" material="shader: flat"></a-circle>
-
-      <!-- Emergency Rescue Ambulance Vehicle with Animated Flashing Blue Beacons -->
-      <a-entity position="-7.5 0 -6.0" rotation="0 25 0">
-        <!-- Main Body -->
-        <a-box position="0 1.25 0" width="2.4" height="2.2" depth="5.4" color="#f8fafc"></a-box>
-        <!-- High-Vis Reflective Stripe -->
-        <a-box position="0 1.25 0" width="2.44" height="0.45" depth="5.44" color="#ef4444"></a-box>
-        <!-- Roof Cross Emblem (Visible when looking down from 30m/60m) -->
-        <a-box position="0 2.38 -0.4" width="1.3" height="0.04" depth="0.42" color="#ef4444"></a-box>
-        <a-box position="0 2.38 -0.4" width="0.42" height="0.04" depth="1.3" color="#ef4444"></a-box>
-        <!-- Front Cab & Windshield -->
-        <a-box position="0 0.95 3.3" width="2.3" height="1.6" depth="1.4" color="#f1f5f9"></a-box>
-        <a-box position="0 1.35 4.01" width="2.0" height="0.65" depth="0.05" color="#0ea5e9"></a-box>
-        <!-- Animated Flashing Blue Rescue Beacons -->
-        <a-box position="-0.65 2.45 2.2" width="0.48" height="0.22" depth="0.28" color="#3b82f6" material="shader: flat"
-               animation="property: components.material.material.color; type: color; from: #3b82f6; to: #1e293b; dur: 400; dir: alternate; loop: true"></a-box>
-        <a-box position="0.65 2.45 2.2" width="0.48" height="0.22" depth="0.28" color="#60a5fa" material="shader: flat"
-               animation="property: components.material.material.color; type: color; from: #1e293b; to: #38bdf8; dur: 400; dir: alternate; loop: true"></a-box>
-      </a-entity>
-
-      <!-- Industrial Shipping Containers (Scale & Parallax Cues) -->
-      <a-box position="8.5 1.3 -5.0" width="2.6" height="2.6" depth="6.2" color="#0284c7"></a-box>
-      <a-box position="8.5 3.9 -5.0" width="2.6" height="2.6" depth="6.2" color="#d97706"></a-box>
-      <a-box position="11.5 1.3 -3.5" width="2.6" height="2.6" depth="6.2" color="#15803d"></a-box>
-
-      <!-- Adjacent Mid-Rise Warehouse Building (12m Roof Reference) -->
-      <a-entity position="-16 0 4">
-        <a-box position="0 6 0" width="12" height="12" depth="18" color="#1e293b"></a-box>
-        <a-plane position="0 12.05 0" rotation="-90 0 0" width="11.4" height="17.4" color="#334155"></a-plane>
-        <a-box position="-2 12.8 -3" width="2.5" height="1.5" depth="2.5" color="#64748b"></a-box>
-        <a-box position="2.5 12.8 3" width="2.5" height="1.5" depth="3.2" color="#475569"></a-box>
-      </a-entity>
-
-      <!-- Perimeter Fencing & Industrial Floodlight Towers -->
-      <a-entity id="perimeter-props">
-        <!-- Floodlight Mast Left -->
-        <a-cylinder position="-13 8 -14" radius="0.18" height="16" color="#475569"></a-cylinder>
-        <a-box position="-13 16.2 -14" width="1.8" height="0.5" depth="0.4" color="#f8fafc" material="shader: flat"></a-box>
-        <!-- Floodlight Mast Right -->
-        <a-cylinder position="13 8 -14" radius="0.18" height="16" color="#475569"></a-cylinder>
-        <a-box position="13 16.2 -14" width="1.8" height="0.5" depth="0.4" color="#f8fafc" material="shader: flat"></a-box>
-        <!-- Perimeter Security Fence Posts -->
-        <a-box position="0 1.2 -18" width="32" height="2.4" depth="0.1" color="#334155" material="opacity: 0.55; transparent: true"></a-box>
-      </a-entity>
-    </a-entity>
-
-    <!-- ======================================================================== -->
-    <!-- 65-METER VERTICAL STEEL LATTICE TOWER                                    -->
-    <!-- ======================================================================== -->
-    <a-entity id="industrial-tower" industrial-tower-builder></a-entity>
-
-    <!-- ======================================================================== -->
-    <!-- 2-SECOND DWELL / GAZE VERIFICATION TARGETS (STAGES 1 TO 5)               -->
-    <!-- ======================================================================== -->
-    <a-entity id="assessment-targets">
-      <!-- STAGE 1 (0.0m Ground Calibration): Downward Over-Edge (1A) & Horizon (1B) -->
-      <a-entity position="0 0.12 -3.6" rotation="-90 0 0"
-                gaze-target="id: S1_A; stage: 1; label: 1A; title: Over-Edge Ground"></a-entity>
-      <a-entity position="0 1.75 -11.5" rotation="0 0 0"
-                gaze-target="id: S1_B; stage: 1; label: 1B; title: Horizon Calib"></a-entity>
-
-      <!-- STAGE 2 (5.0m Low Gantry): Downward Over-Edge (2A) & Horizon (2B) -->
-      <a-entity position="0 0.15 -3.8" rotation="-90 0 0"
-                gaze-target="id: S2_A; stage: 2; label: 2A; title: 5m Drop Edge"></a-entity>
-      <a-entity position="4.2 5.8 -10.5" rotation="0 -20 0"
-                gaze-target="id: S2_B; stage: 2; label: 2B; title: 5m Horizon"></a-entity>
-
-      <!-- STAGE 3 (15.0m Mid-Tower Lattice): Sub-Grating (3A), Side Drop (3B), Horizon (3C) -->
-      <a-entity position="0 5.0 -3.2" rotation="-90 0 0"
-                gaze-target="id: S3_A; stage: 3; label: 3A; title: 15m Sub-Grate"></a-entity>
-      <a-entity position="-3.8 2.0 -3.5" rotation="-90 0 0"
-                gaze-target="id: S3_B; stage: 3; label: 3B; title: 15m Left Drop"></a-entity>
-      <a-entity position="0 16.2 -14.0" rotation="0 0 0"
-                gaze-target="id: S3_C; stage: 3; label: 3C; title: 15m Horizon"></a-entity>
-
-      <!-- STAGE 4 (30.0m Exposed Catwalk): Deep Drop (4A), Side Drop (4B), Horizon (4C) -->
-      <a-entity position="0 12.0 -4.2" rotation="-90 0 0"
-                gaze-target="id: S4_A; stage: 4; label: 4A; title: 30m Deep Drop"></a-entity>
-      <a-entity position="4.5 14.0 -3.5" rotation="-90 0 0"
-                gaze-target="id: S4_B; stage: 4; label: 4B; title: 30m Right Drop"></a-entity>
-      <a-entity position="-3.5 31.0 -15.0" rotation="0 12 0"
-                gaze-target="id: S4_C; stage: 4; label: 4C; title: 30m Horizon"></a-entity>
-
-      <!-- STAGE 5 (60.0m Summit Cantilever Plank): Plank Tip Drop (5A), Abyss (5B), Summit Horizon (5C) -->
-      <a-entity position="0 32.0 -5.2" rotation="-90 0 0"
-                gaze-target="id: S5_A; stage: 5; label: 5A; title: Plank Tip Drop"></a-entity>
-      <a-entity position="-3.2 25.0 -4.5" rotation="-90 0 0"
-                gaze-target="id: S5_B; stage: 5; label: 5B; title: 60m Abyss"></a-entity>
-      <a-entity position="0 61.2 -16.0" rotation="0 0 0"
-                gaze-target="id: S5_C; stage: 5; label: 5C; title: Summit Horizon"></a-entity>
-    </a-entity>
-
-    <!-- ======================================================================== -->
-    <!-- ASCENDING ELEVATOR CABIN, SEE-THROUGH GRATING & RETRACTABLE PLANK        -->
-    <!-- ======================================================================== -->
-    <a-entity id="elevator-cabin" position="0 0 0">
-
-      <!-- See-Through Open Steel Floor Grating (3.6m x 3.6m) with Alpha Transparency -->
-      <a-plane position="0 0.02 0" rotation="-90 0 0" width="3.6" height="3.6"
-               procedural-material="type: grating; repeatX: 10; repeatY: 10; transparent: true"></a-plane>
-
-      <!-- High-Visibility Yellow/Black Hazard Perimeter Steel Frame -->
-      <a-box position="0 0 -1.8" width="3.72" height="0.14" depth="0.18"
-             procedural-material="type: hazard; repeatX: 6; repeatY: 1"></a-box>
-      <a-box position="0 0 1.8" width="3.72" height="0.14" depth="0.18"
-             procedural-material="type: hazard; repeatX: 6; repeatY: 1"></a-box>
-      <a-box position="-1.8 0 0" width="0.18" height="0.14" depth="3.72"
-             procedural-material="type: hazard; repeatX: 6; repeatY: 1"></a-box>
-      <a-box position="1.8 0 0" width="0.18" height="0.14" depth="3.72"
-             procedural-material="type: hazard; repeatX: 6; repeatY: 1"></a-box>
-
-      <!-- Retractable 3.5m Aluminum Cantilever Plank (Extends out over the 60m drop) -->
-      <a-entity id="cantilever-plank" position="0 -0.02 -0.85">
-        <a-box position="0 0 0" width="0.52" height="0.07" depth="3.6"
-               procedural-material="type: plank; repeatX: 1; repeatY: 4"></a-box>
-        <!-- Structural Aluminum I-Beam Under-Support -->
-        <a-box position="0 -0.08 0" width="0.22" height="0.1" depth="3.6" color="#475569"></a-box>
-        <!-- Plank Tip Hazard Bumper -->
-        <a-box position="0 0.04 -1.72" width="0.52" height="0.02" depth="0.18"
-               procedural-material="type: hazard; repeatX: 2; repeatY: 1"></a-box>
-      </a-entity>
-
-      <!-- Toggleable OSHA Perimeter Guardrails (1.1m Height) -->
-      <a-entity id="cabin-guardrails" visible="true">
-        <!-- Left Guardrail -->
-        <a-cylinder position="-1.8 0.55 -1.8" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-cylinder position="-1.8 0.55 0" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-cylinder position="-1.8 0.55 1.8" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-box position="-1.8 1.1 0" width="0.06" height="0.06" depth="3.6" color="#eab308"></a-box>
-        <a-box position="-1.8 0.55 0" width="0.05" height="0.05" depth="3.6" color="#ca8a04"></a-box>
-
-        <!-- Right Guardrail -->
-        <a-cylinder position="1.8 0.55 -1.8" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-cylinder position="1.8 0.55 0" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-cylinder position="1.8 0.55 1.8" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-box position="1.8 1.1 0" width="0.06" height="0.06" depth="3.6" color="#eab308"></a-box>
-        <a-box position="1.8 0.55 0" width="0.05" height="0.05" depth="3.6" color="#ca8a04"></a-box>
-
-        <!-- Rear Guardrail -->
-        <a-box position="0 1.1 1.8" width="3.6" height="0.06" depth="0.06" color="#eab308"></a-box>
-        <a-box position="0 0.55 1.8" width="3.6" height="0.05" depth="0.05" color="#ca8a04"></a-box>
-
-        <!-- Front Guardrail with Center Plank Gate Opening -->
-        <a-cylinder position="-0.45 0.55 -1.8" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-cylinder position="0.45 0.55 -1.8" radius="0.035" height="1.1" color="#eab308"></a-cylinder>
-        <a-box position="-1.12 1.1 -1.8" width="1.35" height="0.06" depth="0.06" color="#eab308"></a-box>
-        <a-box position="1.12 1.1 -1.8" width="1.35" height="0.06" depth="0.06" color="#eab308"></a-box>
-        <a-box position="-1.12 0.55 -1.8" width="1.35" height="0.05" depth="0.05" color="#ca8a04"></a-box>
-        <a-box position="1.12 0.55 -1.8" width="1.35" height="0.05" depth="0.05" color="#ca8a04"></a-box>
-      </a-entity>
-
-      <!-- ====================================================================== -->
-      <!-- IN-CABIN 3D SPATIAL CONTROL PANEL (Clearly visible on front-left rail) -->
-      <!-- ====================================================================== -->
-      <a-entity id="vr-spatial-hud" position="-1.15 1.25 -1.35" rotation="0 28 0">
-        <!-- Console Pedestal & Backing Frame -->
-        <a-cylinder position="0 -0.62 -0.04" radius="0.04" height="1.2" color="#334155"></a-cylinder>
-        <a-box position="0 0 -0.03" width="1.36" height="0.98" depth="0.04" color="#0f172a"></a-box>
-        <a-plane position="0 0 0" width="1.32" height="0.94" color="#1e293b" material="shader: flat"></a-plane>
-
-        <!-- Header Bar -->
-        <a-plane position="0 0.39 0.01" width="1.26" height="0.11" color="#0f172a" material="shader: flat"></a-plane>
-        <a-text value="WAH-VAS // 3D CABIN LIFT & STRESSOR CONSOLE" position="0 0.39 0.02" align="center" width="1.95" color="#f59e0b"></a-text>
-
-        <!-- Live Telemetry Readout in 3D -->
-        <a-text id="vr-hud-telemetry"
-                value="ELEVATION: 0.0m  |  STAGE: 1\nSWAY INDEX: 1.2 mm  |  EXPOSURE: 0.0s\nTARGETS VERIFIED: 0 / 2"
-                position="-0.58 0.21 0.02" align="left" width="1.85" color="#e2e8f0" line-height="56"></a-text>
-
-        <!-- 3D Stage Selection Buttons (Stages 1 to 5) -->
-        <a-entity position="0 -0.03 0.02">
-          <a-plane position="-0.48 0 0" width="0.22" height="0.12" color="#334155" class="interactable"
-                   vr-ui-btn="action: stage; param: 1">
-            <a-text value="STG 1\n0.0m" align="center" width="1.5" position="0 0 0.01" color="#ffffff"></a-text>
-          </a-plane>
-          <a-plane position="-0.24 0 0" width="0.22" height="0.12" color="#334155" class="interactable"
-                   vr-ui-btn="action: stage; param: 2">
-            <a-text value="STG 2\n5.0m" align="center" width="1.5" position="0 0 0.01" color="#ffffff"></a-text>
-          </a-plane>
-          <a-plane position="0 0 0" width="0.22" height="0.12" color="#334155" class="interactable"
-                   vr-ui-btn="action: stage; param: 3">
-            <a-text value="STG 3\n15m" align="center" width="1.5" position="0 0 0.01" color="#ffffff"></a-text>
-          </a-plane>
-          <a-plane position="0.24 0 0" width="0.22" height="0.12" color="#334155" class="interactable"
-                   vr-ui-btn="action: stage; param: 4">
-            <a-text value="STG 4\n30m" align="center" width="1.5" position="0 0 0.01" color="#ffffff"></a-text>
-          </a-plane>
-          <a-plane position="0.48 0 0" width="0.22" height="0.12" color="#7f1d1d" class="interactable"
-                   vr-ui-btn="action: stage; param: 5">
-            <a-text value="STG 5\n60m" align="center" width="1.5" position="0 0 0.01" color="#fecaca"></a-text>
-          </a-plane>
-        </a-entity>
-
-        <!-- 3D Guardrails, Plank Extend & Wind Stressor Buttons -->
-        <a-entity position="0 -0.20 0.02">
-          <a-plane position="-0.42 0 0" width="0.38" height="0.11" color="#78350f" class="interactable"
-                   vr-ui-btn="action: stressor; param: rails">
-            <a-text id="vr-btn-rails" value="RAILS: UP" align="center" width="1.6" position="0 0 0.01" color="#fde68a"></a-text>
-          </a-plane>
-          <a-plane position="0 0 0" width="0.38" height="0.11" color="#0f766e" class="interactable"
-                   vr-ui-btn="action: togglePlank; param: 0">
-            <a-text id="vr-btn-plank" value="PLANK: IN" align="center" width="1.6" position="0 0 0.01" color="#99f6e4"></a-text>
-          </a-plane>
-          <a-plane position="0.42 0 0" width="0.38" height="0.11" color="#1e3a8a" class="interactable"
-                   vr-ui-btn="action: stressor; param: wind">
-            <a-text id="vr-btn-wind" value="WIND: OFF" align="center" width="1.6" position="0 0 0.01" color="#93c5fd"></a-text>
-          </a-plane>
-        </a-entity>
-
-        <!-- Step Out to Plank / Return Center / Emergency 0m Row -->
-        <a-entity position="0 -0.36 0.02">
-          <a-plane position="-0.38 0 0" width="0.46" height="0.11" color="#065f46" class="interactable"
-                   vr-ui-btn="action: stepPlank; param: 0">
-            <a-text value="STEP TO PLANK" align="center" width="1.5" position="0 0 0.01" color="#a7f3d0"></a-text>
-          </a-plane>
-          <a-plane position="0.06 0 0" width="0.36" height="0.11" color="#334155" class="interactable"
-                   vr-ui-btn="action: centerRig; param: 0">
-            <a-text value="CENTER RIG" align="center" width="1.5" position="0 0 0.01" color="#f8fafc"></a-text>
-          </a-plane>
-          <a-plane position="0.44 0 0" width="0.34" height="0.11" color="#991b1b" class="interactable"
-                   vr-ui-btn="action: emergency; param: 1">
-            <a-text value="RESET 0m" align="center" width="1.5" position="0 0 0.01" color="#fecaca"></a-text>
-          </a-plane>
-        </a-entity>
-      </a-entity>
-
-      <!-- ====================================================================== -->
-      <!-- EXPLICIT DESKTOP & VR CAMERA RIG (#camera-rig -> #head-camera)         -->
-      <!-- ====================================================================== -->
-      <a-entity id="camera-rig" position="0 0 0">
-        <a-entity
-          id="head-camera"
-          camera="active: true; fov: 75; near: 0.05; far: 500"
-          position="0 1.65 0"
-          look-controls="pointerLockEnabled: false"
-          wasd-controls="acceleration: 12">
-          
-          <!-- Center-Screen Gaze Reticle for VR & Hands-Free Desktop Targeting -->
-          <a-entity
-            cursor="fuse: false"
-            raycaster="objects: .interactable; far: 160"
-            position="0 0 -1"
-            geometry="primitive: ring; radiusInner: 0.013; radiusOuter: 0.021"
-            material="color: #38bdf8; shader: flat; opacity: 0.9">
-          </a-entity>
-          <a-circle position="0 0 -1" radius="0.003" color="#f59e0b" material="shader: flat"></a-circle>
-        </a-entity>
-
-        <!-- Meta Quest / WebXR Left & Right Tracked Controllers with Laser Raycasters -->
-        <a-entity laser-controls="hand: left" raycaster="objects: .interactable; far: 160; lineColor: #38bdf8"></a-entity>
-        <a-entity laser-controls="hand: right" raycaster="objects: .interactable; far: 160; lineColor: #f59e0b"></a-entity>
-      </a-entity>
-
-    </a-entity>
-  </a-scene>
-
-  <!-- ========================================================================== -->
-  <!-- SYNTHESIZED WEB AUDIO API & SIMULATOR APPLICATION CONTROLLER               -->
-  <!-- ========================================================================== -->
-  <script>
-    // ============================================================================
-    // 4. WEB AUDIO API ENGINE (Wind Gusts + Hydraulic Lift Hum + Target Beeps)
-    // ============================================================================
-    window.SFX = {
-      ctx: null,
-      windGain: null,
-      windFilter: null,
-      liftOsc: null,
-      liftGain: null,
-
-      ensureContext: function () {
-        if (!this.ctx) {
-          const AudioCtx = window.AudioContext || window.webkitAudioContext;
-          this.ctx = new AudioCtx();
-        }
-        if (this.ctx.state === 'suspended') {
-          this.ctx.resume();
-        }
+        this.stages = [0, 5, 15, 30, 60];
+        this.currentStageIndex = 0;
+        this.currentY = 0;
+        this.targetY = 0;
+        this.speed = 4.2; // meters/sec
+        this.plankExtended = false;
+        this.verifiedSet = new Set();
+
+        this.lastCamPos = new THREE.Vector3();
+        this.hasLastCam = false;
+        this.currentSway = 0;
+        this.peakSway = 0;
+        this.swayHistory = new Array(60).fill(0);
+        this.sessionLog = [];
+        this.sampleAccum = 0;
+
+        this.rig = document.getElementById('elevator-rig');
+        this.cam = document.getElementById('head-camera');
+        this.plank = document.getElementById('cantilever-plank');
+        this.frontGate = document.getElementById('front-safety-gate');
+        this.vrReadout = document.getElementById('vr-console-readout');
+        this.swayCanvas = document.getElementById('sway-canvas');
+        this.swayCtx = this.swayCanvas ? this.swayCanvas.getContext('2d') : null;
+
+        // Web Audio Synthesizer
+        this.audioCtx = null;
+        this.windGain = null;
       },
 
-      setLiftMotorActive: function (active, distRemaining) {
-        if (!this.ctx) return;
-        if (active && !this.liftOsc) {
-          this.liftOsc = this.ctx.createOscillator();
-          this.liftGain = this.ctx.createGain();
-          this.liftOsc.type = 'sawtooth';
-          this.liftOsc.frequency.value = 68;
-
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'lowpass';
-          filter.frequency.value = 190;
-
-          this.liftGain.gain.value = 0.001;
-          this.liftOsc.connect(filter);
-          filter.connect(this.liftGain);
-          this.liftGain.connect(this.ctx.destination);
-          this.liftOsc.start();
-        }
-        if (this.liftGain && this.ctx) {
-          const targetGain = active ? 0.045 : 0.0001;
-          this.liftGain.gain.setTargetAtTime(targetGain, this.ctx.currentTime, 0.12);
-          if (active && this.liftOsc) {
-            const pitch = 62 + Math.min(35, distRemaining * 1.2);
-            this.liftOsc.frequency.setTargetAtTime(pitch, this.ctx.currentTime, 0.1);
-          }
-        }
-      },
-
-      setWindActive: function (enabled) {
-        this.ensureContext();
-        if (enabled && !this.windGain) {
-          const bufferSize = this.ctx.sampleRate * 3;
-          const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      ensureAudio: function () {
+        if (this.audioCtx) return;
+        try {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.audioCtx = new AudioContext();
+          const bufferSize = this.audioCtx.sampleRate * 2;
+          const noiseBuffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
           const output = noiseBuffer.getChannelData(0);
           for (let i = 0; i < bufferSize; i++) {
             output[i] = Math.random() * 2 - 1;
           }
-
-          const whiteNoise = this.ctx.createBufferSource();
+          const whiteNoise = this.audioCtx.createBufferSource();
           whiteNoise.buffer = noiseBuffer;
           whiteNoise.loop = true;
 
-          this.windFilter = this.ctx.createBiquadFilter();
-          this.windFilter.type = 'bandpass';
-          this.windFilter.frequency.value = 340;
-          this.windFilter.Q.value = 2.6;
+          const filter = this.audioCtx.createBiquadFilter();
+          filter.type = 'lowpass';
+          filter.frequency.value = 320;
 
-          this.windGain = this.ctx.createGain();
+          this.windGain = this.audioCtx.createGain();
           this.windGain.gain.value = 0.01;
 
-          whiteNoise.connect(this.windFilter);
-          this.windFilter.connect(this.windGain);
-          this.windGain.connect(this.ctx.destination);
+          whiteNoise.connect(filter);
+          filter.connect(this.windGain);
+          this.windGain.connect(this.audioCtx.destination);
           whiteNoise.start(0);
-        }
-
-        if (this.windGain) {
-          const altBonus = Math.min(0.30, (window.SIM_STATE.currentAltitude / 60) * 0.22 + 0.06);
-          this.windGain.gain.setTargetAtTime(enabled ? altBonus : 0.0001, this.ctx.currentTime, 0.25);
+        } catch (e) {
+          // Audio blocked until user gesture
         }
       },
 
-      updateWindPitchByAltitude: function (alt) {
-        if (this.windFilter && window.SIM_STATE.stressors.wind && this.ctx) {
-          const freq = 250 + (alt * 5.8) + Math.sin(performance.now() * 0.0022) * 90;
-          this.windFilter.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.15);
-          const gainVal = Math.min(0.32, (alt / 60) * 0.24 + 0.06);
-          this.windGain.gain.setTargetAtTime(gainVal, this.ctx.currentTime, 0.2);
-        }
-      },
-
-      playLockTone: function (freq = 440) {
-        this.ensureContext();
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
+      playTone: function (freq, duration = 0.12) {
+        this.ensureAudio();
+        if (!this.audioCtx) return;
+        const osc = this.audioCtx.createOscillator();
+        const g = this.audioCtx.createGain();
         osc.type = 'sine';
         osc.frequency.value = freq;
-        g.gain.setValueAtTime(0.055, this.ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.11);
+        g.gain.value = 0.08;
         osc.connect(g);
-        g.connect(this.ctx.destination);
+        g.connect(this.audioCtx.destination);
         osc.start();
-        osc.stop(this.ctx.currentTime + 0.11);
+        osc.stop(this.audioCtx.currentTime + duration);
       },
 
-      playSuccessTone: function () {
-        this.ensureContext();
-        const now = this.ctx.currentTime;
-        [587.33, 880].forEach((f, idx) => {
-          const osc = this.ctx.createOscillator();
-          const g = this.ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.value = f;
-          g.gain.setValueAtTime(0.085, now + idx * 0.09);
-          g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.22);
-          osc.connect(g);
-          g.connect(this.ctx.destination);
-          osc.start(now + idx * 0.09);
-          osc.stop(now + idx * 0.09 + 0.22);
-        });
-      },
-
-      playClick: function () {
-        this.playLockTone(620);
-      }
-    };
-
-    // ============================================================================
-    // 5. MAIN SIMULATOR APPLICATION CONTROLLER
-    // ============================================================================
-    window.SIM_APP = {
-      selectStage: function (stageNum) {
-        const stg = window.SIM_STATE.stages[stageNum];
-        if (!stg) return;
-
-        window.SFX.playClick();
-        window.SIM_STATE.currentStage = stageNum;
-        window.SIM_STATE.targetAltitude = stg.altitude;
-
-        // Auto-extend Cantilever Plank when selecting Stage 5 (60.0m)
-        if (stageNum === 5 && !window.SIM_STATE.plankExtended) {
-          this.togglePlank(true);
-        }
-
-        // Highlight active 2D Stage button (1..5)
-        for (let i = 1; i <= 5; i++) {
-          const btn = document.getElementById(`btn-stage-${i}`);
-          if (btn) btn.classList.toggle('active', i === stageNum);
-        }
-
-        document.getElementById('stage-banner').textContent = `${stg.name.toUpperCase()} (${stg.altitude.toFixed(1)}m)`;
-        document.getElementById('task-desc').textContent = stg.instruction;
-
-        this.renderTargetChecklist();
-        this.refreshTelemetryDisplays();
-      },
-
-      togglePlank: function (forceState) {
-        window.SFX.playClick();
-        const nextState = (typeof forceState === 'boolean') ? forceState : !window.SIM_STATE.plankExtended;
-        window.SIM_STATE.plankExtended = nextState;
-
-        document.getElementById('state-plank').textContent = nextState ? 'EXTENDED 3.5m' : 'RETRACTED';
-        document.getElementById('btn-plank-toggle').classList.toggle('active', nextState);
-        const vrBtn = document.getElementById('vr-btn-plank');
-        if (vrBtn) vrBtn.setAttribute('value', `PLANK: ${nextState ? 'OUT' : 'IN'}`);
-      },
-
-      toggleStressor: function (type) {
-        window.SFX.playClick();
-        const s = window.SIM_STATE.stressors;
-        s[type] = !s[type];
-
-        if (type === 'wind') {
-          window.SFX.setWindActive(s.wind);
-          document.getElementById('state-wind').textContent = s.wind ? 'ACTIVE' : 'OFF';
-          document.getElementById('btn-stress-wind').classList.toggle('active', s.wind);
-          const vrTxt = document.getElementById('vr-btn-wind');
-          if (vrTxt) vrTxt.setAttribute('value', `WIND: ${s.wind ? 'ON' : 'OFF'}`);
-        } else if (type === 'sway') {
-          document.getElementById('state-sway').textContent = s.sway ? 'ACTIVE' : 'OFF';
-          document.getElementById('btn-stress-sway').classList.toggle('active', s.sway);
-        } else if (type === 'rails') {
-          const railsEl = document.getElementById('cabin-guardrails');
-          if (railsEl) railsEl.setAttribute('visible', s.rails);
-          document.getElementById('state-rails').textContent = s.rails ? 'UP' : 'DROPPED';
-          document.getElementById('btn-stress-rails').classList.toggle('active', s.rails);
-          const vrTxt = document.getElementById('vr-btn-rails');
-          if (vrTxt) vrTxt.setAttribute('value', `RAILS: ${s.rails ? 'UP' : 'DOWN'}`);
-        }
-      },
-
-      stepOutToPlank: function () {
-        window.SFX.playClick();
-        if (!window.SIM_STATE.plankExtended) {
-          this.togglePlank(true);
-        }
-        const rig = document.getElementById('camera-rig');
-        if (rig) {
-          rig.setAttribute('position', '0 0 -2.85');
-        }
-      },
-
-      resetCenterPosition: function () {
-        window.SFX.playClick();
-        const rig = document.getElementById('camera-rig');
-        if (rig) {
-          rig.setAttribute('position', '0 0 0');
-        }
-      },
-
-      emergencyDescent: function () {
-        this.resetCenterPosition();
-        if (!window.SIM_STATE.stressors.rails) {
-          this.toggleStressor('rails');
-        }
-        if (window.SIM_STATE.plankExtended) {
-          this.togglePlank(false);
-        }
-        this.selectStage(1);
-      },
-
-      handleVRCommand: function (action, param) {
+      handleAction: function (action, param) {
         if (action === 'stage') {
-          this.selectStage(parseInt(param, 10));
-        } else if (action === 'stressor') {
-          this.toggleStressor(param);
-        } else if (action === 'togglePlank') {
-          this.togglePlank();
-        } else if (action === 'stepPlank') {
-          this.stepOutToPlank();
-        } else if (action === 'centerRig') {
-          this.resetCenterPosition();
-        } else if (action === 'emergency') {
-          this.emergencyDescent();
-        }
-      },
-
-      onTargetVerified: function (targetId, stageNum) {
-        const stg = window.SIM_STATE.stages[stageNum];
-        if (!stg) return;
-        if (!stg.verifiedTargets.includes(targetId)) {
-          stg.verifiedTargets.push(targetId);
-        }
-
-        const badge = document.getElementById(`badge-stage-${stageNum}`);
-        if (badge) {
-          badge.textContent = `${stg.verifiedTargets.length}/${stg.totalTargets} Verified`;
-          if (stg.verifiedTargets.length >= stg.totalTargets) {
-            badge.className = 'text-[10px] text-emerald-400 font-bold mono mt-0.5';
+          const idx = parseInt(param, 10);
+          if (!isNaN(idx) && idx >= 0 && idx < this.stages.length) {
+            this.currentStageIndex = idx;
+            this.targetY = this.stages[idx];
+            this.playTone(440 + idx * 90, 0.12);
+            if (this.targetY >= 60 && !this.plankExtended) {
+              this.setPlank(true);
+            } else if (this.targetY < 60 && this.plankExtended) {
+              this.setPlank(false);
+            }
           }
+        } else if (action === 'toggle-plank') {
+          this.setPlank(!this.plankExtended);
+        } else if (action === 'abort') {
+          this.currentStageIndex = 0;
+          this.targetY = 0;
+          this.setPlank(false);
+          this.playTone(220, 0.35);
+        } else if (action === 'reset') {
+          this.peakSway = 0;
+          this.verifiedSet.clear();
+          this.sessionLog = [];
+          document.querySelectorAll('[gaze-target]').forEach((el) => {
+            el.components['gaze-target'].resetTarget();
+          });
+          this.playTone(520, 0.15);
         }
-
-        const hudScanBar = document.getElementById('hud-scan-progress');
-        if (hudScanBar) hudScanBar.style.width = '0%';
-
-        this.renderTargetChecklist();
-        this.refreshTelemetryDisplays();
+        this.syncButtons();
       },
 
-      renderTargetChecklist: function () {
-        const container = document.getElementById('target-checklist');
-        if (!container) return;
-        const curStage = window.SIM_STATE.currentStage;
-        const stg = window.SIM_STATE.stages[curStage];
-        const targets = document.querySelectorAll(`[gaze-target*="stage: ${curStage}"]`);
+      setPlank: function (extend) {
+        this.plankExtended = extend;
+        if (this.plank) {
+          this.plank.setAttribute('position', extend ? '0 0.02 2.4' : '0 0.02 0.1');
+        }
+        if (this.frontGate) {
+          this.frontGate.setAttribute('visible', !extend);
+        }
+        this.playTone(extend ? 660 : 340, 0.18);
+      },
 
-        let html = '';
-        targets.forEach((el) => {
-          const data = el.getAttribute('gaze-target');
-          const isDone = stg.verifiedTargets.includes(data.id);
-          html += `
-            <div class="px-2 py-1 rounded border ${isDone ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300' : 'bg-slate-950/60 border-slate-800 text-slate-400'} flex items-center justify-between">
-              <span class="font-bold">${data.label}</span>
-              <span>${isDone ? '✓ OK' : 'SCAN'}</span>
-            </div>
-          `;
+      onTargetVerified: function (id) {
+        this.verifiedSet.add(id);
+        this.playTone(880, 0.22);
+        this.recordLogEntry(`TARGET_VERIFIED_${id}`);
+      },
+
+      syncButtons: function () {
+        document.querySelectorAll('.stage-btn').forEach((btn, idx) => {
+          btn.classList.toggle('active', idx === this.currentStageIndex);
         });
-        container.innerHTML = html;
+      },
+
+      recordLogEntry: function (eventLabel) {
+        this.sessionLog.push({
+          timestamp: new Date().toISOString(),
+          event: eventLabel,
+          elevation_m: Number(this.currentY.toFixed(2)),
+          stage_target_m: this.targetY,
+          sway_cm_s: Number(this.currentSway.toFixed(2)),
+          peak_sway_cm_s: Number(this.peakSway.toFixed(2)),
+          targets_verified: this.verifiedSet.size
+        });
+      },
+
+      exportData: function (format) {
+        this.recordLogEntry('MANUAL_EXPORT');
+        if (format === 'json') {
+          const blob = new Blob([JSON.stringify(this.sessionLog, null, 2)], { type: 'application/json' });
+          this.triggerDownload(blob, `vertigo_telemetry_${Date.now()}.json`);
+        } else {
+          const headers = 'timestamp,event,elevation_m,stage_target_m,sway_cm_s,peak_sway_cm_s,targets_verified\n';
+          const rows = this.sessionLog.map(r =>
+            `${r.timestamp},${r.event},${r.elevation_m},${r.stage_target_m},${r.sway_cm_s},${r.peak_sway_cm_s},${r.targets_verified}`
+          ).join('\n');
+          const blob = new Blob([headers + rows], { type: 'text/csv' });
+          this.triggerDownload(blob, `vertigo_telemetry_${Date.now()}.csv`);
+        }
+      },
+
+      triggerDownload: function (blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+
+      tick: function (t, dt) {
+        if (!dt) return;
+        const dtSec = dt / 1000;
+
+        // 1. Smooth Elevator Interpolation
+        const diff = this.targetY - this.currentY;
+        if (Math.abs(diff) > 0.01) {
+          const step = Math.sign(diff) * Math.min(Math.abs(diff), this.speed * dtSec);
+          this.currentY += step;
+          if (this.rig) {
+            this.rig.object3D.position.y = this.currentY;
+          }
+        } else {
+          this.currentY = this.targetY;
+        }
+
+        // 2. Modulate Ambient Wind by Altitude
+        if (this.windGain && this.audioCtx) {
+          const gainTarget = 0.01 + (this.currentY / 60) * 0.14;
+          this.windGain.gain.setTargetAtTime(gainTarget, this.audioCtx.currentTime, 0.1);
+        }
+
+        // 3. Head Postural Sway Calculation (cm/s horizontal velocity)
+        if (this.cam) {
+          const pos = this.cam.object3D.position;
+          if (this.hasLastCam && dtSec > 0) {
+            const dx = pos.x - this.lastCamPos.x;
+            const dz = pos.z - this.lastCamPos.z;
+            const distCm = Math.sqrt(dx * dx + dz * dz) * 100;
+            const instSway = distCm / dtSec;
+            this.currentSway = this.currentSway * 0.85 + instSway * 0.15;
+            if (this.currentSway > this.peakSway) {
+              this.peakSway = this.currentSway;
+            }
+          }
+          this.lastCamPos.copy(pos);
+          this.hasLastCam = true;
+        }
+
+        // 4. Periodic Sparkline & Telemetry Update (10Hz UI refresh)
+        this.sampleAccum += dt;
+        if (this.sampleAccum >= 100) {
+          this.sampleAccum = 0;
+          this.swayHistory.push(this.currentSway);
+          if (this.swayHistory.length > 60) this.swayHistory.shift();
+          this.updateHUD();
+          this.drawSparkline();
+        }
+      },
+
+      updateHUD: function () {
+        const elVal = document.getElementById('hud-elev');
+        const swVal = document.getElementById('hud-sway');
+        const pkVal = document.getElementById('hud-peak');
+        const tgVal = document.getElementById('hud-targets');
+        const badge = document.getElementById('hud-status');
+
+        if (elVal) elVal.textContent = `${this.currentY.toFixed(1)} m`;
+        if (swVal) swVal.textContent = `${this.currentSway.toFixed(1)} cm/s`;
+        if (pkVal) pkVal.textContent = `${this.peakSway.toFixed(1)} cm/s`;
+        if (tgVal) tgVal.textContent = `${this.verifiedSet.size} / 4`;
+
+        let stability = 'STABLE';
+        if (this.currentSway > 18) stability = 'HIGH SWAY';
+        else if (this.currentSway > 8) stability = 'MODERATE';
+
+        if (badge) {
+          badge.textContent = stability;
+          badge.style.color = stability === 'STABLE' ? '#22c55e' : (stability === 'MODERATE' ? '#f59e0b' : '#ef4444');
+          badge.style.borderColor = badge.style.color;
+        }
+
+        if (this.vrReadout) {
+          this.vrReadout.setAttribute(
+            'value',
+            `ALT: ${this.currentY.toFixed(1)}m / ${this.targetY}m\nSWAY: ${this.currentSway.toFixed(1)} cm/s (PK: ${this.peakSway.toFixed(1)})\nTARGETS: ${this.verifiedSet.size}/4 | ${stability}`
+          );
+        }
       },
 
       drawSparkline: function () {
-        const canvas = document.getElementById('sway-sparkline');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
-        const data = window.SIM_STATE.sparklineHistory;
-
+        if (!this.swayCtx || !this.swayCanvas) return;
+        const ctx = this.swayCtx;
+        const w = this.swayCanvas.width;
+        const h = this.swayCanvas.height;
         ctx.clearRect(0, 0, w, h);
-        // Subtle threshold reference line
-        ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
         ctx.beginPath();
-        ctx.moveTo(0, h * 0.45);
-        ctx.lineTo(w, h * 0.45);
+        ctx.moveTo(0, h / 2);
+        ctx.lineTo(w, h / 2);
         ctx.stroke();
 
-        // Sparkline path
-        const latest = data[data.length - 1] || 1.2;
-        ctx.strokeStyle = latest > 6.0 ? '#f43f5e' : (latest > 3.2 ? '#f59e0b' : '#10b981');
-        ctx.lineWidth = 1.75;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        for (let i = 0; i < data.length; i++) {
-          const x = (i / (data.length - 1)) * w;
-          const norm = Math.min(1, data[i] / 10.0);
-          const y = h - (norm * (h - 6)) - 3;
+        const maxScale = 30;
+        for (let i = 0; i < this.swayHistory.length; i++) {
+          const x = (i / (this.swayHistory.length - 1)) * w;
+          const norm = Math.min(this.swayHistory[i] / maxScale, 1);
+          const y = h - norm * (h - 6) - 3;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
+      }
+    });
 
-        const peakEl = document.getElementById('sparkline-peak');
-        if (peakEl) {
-          peakEl.textContent = latest > 6.0 ? 'HIGH SWAY' : (latest > 3.2 ? 'MODERATE' : 'STABLE');
-          peakEl.className = latest > 6.0 ? 'text-rose-400' : (latest > 3.2 ? 'text-amber-400' : 'text-emerald-400');
-        }
-      },
-
-      refreshTelemetryDisplays: function () {
-        const st = window.SIM_STATE;
-        const curStage = st.stages[st.currentStage];
-        if (!curStage) return;
-
-        document.getElementById('hud-altitude').textContent = `${st.currentAltitude.toFixed(1)} m`;
-        document.getElementById('hud-exposure').textContent = `${curStage.exposureTime.toFixed(1)} s`;
-        document.getElementById('hud-sway').textContent = `${st.instantSway.toFixed(1)} mm`;
-        document.getElementById('hud-pitch').textContent = `${st.currentPitchDeg.toFixed(0)}°`;
-        document.getElementById('hud-targets').textContent = `${curStage.verifiedTargets.length} / ${curStage.totalTargets}`;
-
-        const statusBadge = document.getElementById('status-badge');
-        if (st.isMoving) {
-          statusBadge.textContent = 'LIFT IN TRANSIT';
-          statusBadge.className = 'px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 mono';
-        } else {
-          statusBadge.textContent = 'STATION LOCKED';
-          statusBadge.className = 'px-2 py-0.5 text-[10px] font-semibold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mono';
-        }
-
-        const vrTelemetry = document.getElementById('vr-hud-telemetry');
-        if (vrTelemetry) {
-          vrTelemetry.setAttribute(
-            'value',
-            `ELEVATION: ${st.currentAltitude.toFixed(1)}m  |  STAGE: ${st.currentStage}\nSWAY INDEX: ${st.instantSway.toFixed(1)} mm  |  EXPOSURE: ${curStage.exposureTime.toFixed(1)}s\nTARGETS VERIFIED: ${curStage.verifiedTargets.length} / ${curStage.totalTargets}`
-          );
-        }
-
-        window.SFX.updateWindPitchByAltitude(st.currentAltitude);
-      },
-
-      openReportModal: function () {
-        window.SFX.playClick();
-        const tbody = document.getElementById('report-table-body');
-        tbody.innerHTML = '';
-
-        let totalScore = 0;
-        let totalVerified = 0;
-        let totalPossible = 0;
-        const stageList = Object.values(window.SIM_STATE.stages);
-
-        stageList.forEach((stg) => {
-          totalVerified += stg.verifiedTargets.length;
-          totalPossible += stg.totalTargets;
-
-          const swayPass = stg.meanSway < 10.0;
-          const targetsComplete = stg.verifiedTargets.length === stg.totalTargets;
-          const tierScore = (swayPass ? 50 : 20) + ((stg.verifiedTargets.length / stg.totalTargets) * 50);
-          totalScore += tierScore;
-
-          let badgeHtml = '';
-          if (targetsComplete && swayPass) {
-            badgeHtml = '<span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">PASS / STABLE</span>';
-          } else if (stg.exposureTime > 1 && swayPass) {
-            badgeHtml = '<span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">PARTIAL SCAN</span>';
-          } else {
-            badgeHtml = '<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">UNVERIFIED</span>';
-          }
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="py-2.5 px-3 font-semibold text-white">${stg.name} (${stg.altitude.toFixed(1)}m)</td>
-            <td class="py-2.5 px-3">${stg.verifiedTargets.length} / ${stg.totalTargets}</td>
-            <td class="py-2.5 px-3">${stg.exposureTime.toFixed(1)} s</td>
-            <td class="py-2.5 px-3 text-emerald-400">${stg.meanSway.toFixed(2)} mm</td>
-            <td class="py-2.5 px-3 text-amber-300">${stg.peakSway.toFixed(2)} mm</td>
-            <td class="py-2.5 px-3 text-right">${badgeHtml}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        const composite = Math.round(totalScore / stageList.length);
-        document.getElementById('report-composite-score').textContent = `${composite}%`;
-
-        const verdictTitle = document.getElementById('report-verdict-title');
-        const verdictDesc = document.getElementById('report-verdict-desc');
-        const verdictBox = document.getElementById('report-verdict-box');
-
-        if (totalVerified >= 9) {
-          verdictTitle.textContent = 'QUALIFIED FOR WORK AT HEIGHT (CERTIFIED)';
-          verdictTitle.className = 'text-xs uppercase font-bold tracking-wider text-emerald-400 mono';
-          verdictBox.className = 'p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-950/40 border-emerald-500/40';
-          verdictDesc.textContent = `Candidate verified ${totalVerified}/${totalPossible} visual markers across progressive elevations with controlled vestibular sway.`;
-        } else {
-          verdictTitle.textContent = 'PROVISIONAL / ADDITIONAL ELEVATION TRAINING REQUIRED';
-          verdictTitle.className = 'text-xs uppercase font-bold tracking-wider text-amber-400 mono';
-          verdictBox.className = 'p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-950/40 border-amber-500/40';
-          verdictDesc.textContent = `Candidate has verified ${totalVerified}/${totalPossible} markers so far. Complete remaining elevation tiers for full certification.`;
-        }
-
-        const modal = document.getElementById('report-modal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-      },
-
-      closeReportModal: function () {
-        const modal = document.getElementById('report-modal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      },
-
-      exportCSV: function () {
-        const rows = [
-          ['Stage', 'Altitude_m', 'Targets_Verified', 'Total_Targets', 'Exposure_s', 'Mean_Sway_mm', 'Peak_Tremor_mm']
-        ];
-        Object.values(window.SIM_STATE.stages).forEach((s) => {
-          rows.push([
-            `"${s.name}"`,
-            s.altitude.toFixed(1),
-            s.verifiedTargets.length,
-            s.totalTargets,
-            s.exposureTime.toFixed(2),
-            s.meanSway.toFixed(2),
-            s.peakSway.toFixed(2)
-          ]);
-        });
-        const csvContent = rows.map(r => r.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `WAH-VAS_Assessment_${new Date().toISOString().slice(0,10)}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        const fb = document.getElementById('copy-feedback');
-        fb.textContent = 'CSV Report downloaded!';
-        fb.style.opacity = '1';
-        setTimeout(() => { fb.style.opacity = '0'; }, 2500);
-      },
-
-      copyTelemetryJSON: function () {
-        const payload = {
-          timestamp: new Date().toISOString(),
-          simulator: 'WAH-VAS v6.0 WebXR',
-          stressorsActive: window.SIM_STATE.stressors,
-          plankExtended: window.SIM_STATE.plankExtended,
-          stages: Object.values(window.SIM_STATE.stages).map(s => ({
-            stageNum: s.stageNum,
-            stage: s.name,
-            altitudeMeters: s.altitude,
-            targetsVerified: `${s.verifiedTargets.length}/${s.totalTargets}`,
-            exposureSeconds: Number(s.exposureTime.toFixed(2)),
-            meanSwayMM: Number(s.meanSway.toFixed(2)),
-            peakTremorMM: Number(s.peakSway.toFixed(2))
-          }))
-        };
-
-        const tempInput = document.createElement('textarea');
-        tempInput.value = JSON.stringify(payload, null, 2);
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand('copy');
-        document.body.removeChild(tempInput);
-
-        const fb = document.getElementById('copy-feedback');
-        fb.textContent = 'JSON Telemetry copied to clipboard!';
-        fb.style.opacity = '1';
-        setTimeout(() => { fb.style.opacity = '0'; }, 2500);
-      },
-
-      resetAssessment: function () {
-        window.SFX.playClick();
-        Object.values(window.SIM_STATE.stages).forEach((s) => {
-          s.verifiedTargets = [];
-          s.exposureTime = 0;
-          s.swaySamples = [1.15];
-          s.meanSway = 1.15;
-          s.peakSway = 1.35;
-          const badge = document.getElementById(`badge-stage-${s.stageNum}`);
-          if (badge) {
-            badge.textContent = `0/${s.totalTargets} Verified`;
-            badge.className = 'text-[10px] text-amber-400 mono mt-0.5';
-          }
-        });
-
-        document.querySelectorAll('[gaze-target]').forEach(el => {
-          if (el.components['gaze-target']) {
-            el.components['gaze-target'].resetTarget();
-          }
-        });
-
-        this.emergencyDescent();
+    // Global helper for 2D HUD buttons & Keyboard shortcuts
+    window.simCmd = function (action, param) {
+      const scene = document.querySelector('a-scene');
+      if (scene && scene.components['elevator-telemetry-system']) {
+        scene.components['elevator-telemetry-system'].handleAction(action, param);
       }
     };
 
-    // Initialize checklist & sparkline once DOM & A-Frame scene are ready
-    window.addEventListener('DOMContentLoaded', () => {
-      const sceneEl = document.querySelector('a-scene');
-      const onSceneReady = () => {
-        window.SIM_APP.renderTargetChecklist();
-        window.SIM_APP.drawSparkline();
-        window.SIM_APP.refreshTelemetryDisplays();
-      };
-      if (sceneEl && sceneEl.hasLoaded) {
-        onSceneReady();
-      } else if (sceneEl) {
-        sceneEl.addEventListener('loaded', onSceneReady);
+    window.simExport = function (fmt) {
+      const scene = document.querySelector('a-scene');
+      if (scene && scene.components['elevator-telemetry-system']) {
+        scene.components['elevator-telemetry-system'].exportData(fmt);
+      }
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key >= '1' && e.key <= '5') {
+        window.simCmd('stage', String(parseInt(e.key, 10) - 1));
+      } else if (e.key.toLowerCase() === 'p') {
+        window.simCmd('toggle-plank');
+      } else if (e.key === ' ') {
+        window.simCmd('abort');
       }
     });
 
-    // Keyboard shortcut ESC to close modal
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        window.SIM_APP.closeReportModal();
+    window.addEventListener('DOMContentLoaded', () => {
+      const skyImg = document.getElementById('skybox-img');
+      const envSky = document.getElementById('env-sky');
+      if (skyImg && envSky) {
+        skyImg.addEventListener('error', () => {
+          const mesh = envSky.getObject3D('mesh');
+          if (mesh) {
+            mesh.material.map = TextureFactory.getFallbackSky();
+            mesh.material.needsUpdate = true;
+          }
+        });
       }
     });
   </script>
+</head>
+<body>
+
+  <!-- 2D INSTRUCTOR TELEMETRY HUD -->
+  <div id="hud">
+    <div class="hud-header">
+      <div class="hud-title">WAH Vertigo Assessment</div>
+      <div id="hud-status" class="badge">STABLE</div>
+    </div>
+
+    <div class="telemetry-grid">
+      <div class="metric-box">
+        <div class="metric-label">Elevation</div>
+        <div id="hud-elev" class="metric-val">0.0 m</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Postural Sway</div>
+        <div id="hud-sway" class="metric-val">0.0 cm/s</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Peak Sway</div>
+        <div id="hud-peak" class="metric-val">0.0 cm/s</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-label">Targets Verified</div>
+        <div id="hud-targets" class="metric-val">0 / 4</div>
+      </div>
+    </div>
+
+    <canvas id="sway-canvas" width="330" height="44"></canvas>
+
+    <div class="stage-grid">
+      <button class="btn stage-btn active" onclick="simCmd('stage', '0')">0m</button>
+      <button class="btn stage-btn" onclick="simCmd('stage', '1')">5m</button>
+      <button class="btn stage-btn" onclick="simCmd('stage', '2')">15m</button>
+      <button class="btn stage-btn" onclick="simCmd('stage', '3')">30m</button>
+      <button class="btn stage-btn" onclick="simCmd('stage', '4')">60m</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-warn" onclick="simCmd('toggle-plank')">Toggle 60m Plank (P)</button>
+      <button class="btn btn-danger" onclick="simCmd('abort')">Emergency Ground (SPC)</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="simExport('csv')">Export CSV</button>
+      <button class="btn" onclick="simExport('json')">Export JSON</button>
+    </div>
+
+    <div class="instructions">
+      <strong>Controls:</strong> Keys [1-5] Stage | [WASD] Walk | Mouse Drag / Gaze to verify orange spheres | [P] Cantilever Plank.
+    </div>
+  </div>
+
+  <!-- 3D WEBGL / WEBXR SCENE -->
+  <a-scene
+    elevator-telemetry-system
+    renderer="antialias: true; colorManagement: true"
+    background="color: #94a3b8"
+    fog="type: linear; color: #94a3b8; near: 80; far: 350"
+    cursor="rayOrigin: mouse"
+    raycaster="objects: .clickable">
+
+    <!-- ASSET PRELOADER FOR ROOT SKYBOX.JPEG -->
+    <a-assets timeout="5000">
+      <img id="skybox-img" src="./Skybox.jpeg" crossorigin="anonymous">
+    </a-assets>
+
+    <!-- 360 EQUIRECTANGULAR SKYBOX (EXEMPT FROM FOG) -->
+    <a-sky
+      id="env-sky"
+      src="#skybox-img"
+      radius="450"
+      rotation="0 -90 0"
+      material="shader: flat; fog: false">
+    </a-sky>
+
+    <!-- LIGHTING -->
+    <a-entity light="type: ambient; color: #cbd5e1; intensity: 0.75"></a-entity>
+    <a-entity light="type: directional; color: #ffffff; intensity: 0.95" position="25 60 30"></a-entity>
+
+    <!-- GROUND PLANE -->
+    <a-plane
+      position="0 0 0"
+      rotation="-90 0 0"
+      width="300"
+      height="300"
+      procedural-material="type: ground; repeatX: 60; repeatY: 60">
+    </a-plane>
+
+    <!-- PROCEDURAL 65M LATTICE TOWER -->
+    <a-entity id="lattice-tower" industrial-tower-builder></a-entity>
+
+    <!-- GROUND SCALE REFERENCE OBJECTS (SHIPPING CONTAINERS & SAFETY VEHICLE) -->
+    <a-box position="-9 1.3 5" width="2.5" height="2.6" depth="6.0" color="#1d4ed8"></a-box>
+    <a-box position="-6 1.3 5" width="2.5" height="2.6" depth="6.0" color="#b91c1c"></a-box>
+    <a-entity position="7 0 6" rotation="0 -25 0">
+      <a-box position="0 1.1 0" width="2.2" height="2.2" depth="5.0" color="#f8fafc"></a-box>
+      <a-box position="0 1.2 0.1" width="2.25" height="0.45" depth="4.8" color="#dc2626"></a-box>
+      <a-sphere position="-0.6 2.3 1.8" radius="0.15" color="#38bdf8" material="shader: flat"></a-sphere>
+      <a-sphere position="0.6 2.3 1.8" radius="0.15" color="#ef4444" material="shader: flat"></a-sphere>
+    </a-entity>
+
+    <!-- ELEVATOR PLATFORM RIG -->
+    <a-entity id="elevator-rig" position="0 0 0">
+
+      <!-- SEE-THROUGH STEEL GRATING FLOOR -->
+      <a-plane
+        position="0 0.01 0"
+        rotation="-90 0 0"
+        width="2.8"
+        height="2.6"
+        procedural-material="type: grating; repeatX: 6; repeatY: 6">
+      </a-plane>
+
+      <!-- PERIMETER TOE-BOARDS -->
+      <a-box position="0 0.08 -1.3" width="2.8" height="0.16" depth="0.06" procedural-material="type: hazard; repeatX: 4; repeatY: 1"></a-box>
+      <a-box position="-1.4 0.08 0" width="0.06" height="0.16" depth="2.6" procedural-material="type: hazard; repeatX: 4; repeatY: 1"></a-box>
+      <a-box position="1.4 0.08 0" width="0.06" height="0.16" depth="2.6" procedural-material="type: hazard; repeatX: 4; repeatY: 1"></a-box>
+
+      <!-- SAFETY HANDRAILS (WEST, EAST, NORTH) -->
+      <a-box position="-1.4 1.0 0" width="0.06" height="0.06" depth="2.6" color="#eab308"></a-box>
+      <a-box position="1.4 1.0 0" width="0.06" height="0.06" depth="2.6" color="#eab308"></a-box>
+      <a-box position="0 1.0 -1.3" width="2.8" height="0.06" depth="0.06" color="#eab308"></a-box>
+
+      <!-- FRONT SAFETY GATE (OPENS WHEN PLANK IS DEPLOYED) -->
+      <a-entity id="front-safety-gate" position="0 0 1.3">
+        <a-box position="0 1.0 0" width="2.8" height="0.06" depth="0.06" color="#ef4444"></a-box>
+        <a-box position="0 0.5 0" width="2.8" height="0.04" depth="0.04" color="#eab308"></a-box>
+      </a-entity>
+
+      <!-- RETRACTABLE CANTILEVER EXPOSURE PLANK -->
+      <a-box
+        id="cantilever-plank"
+        position="0 0.02 0.1"
+        width="0.48"
+        height="0.05"
+        depth="3.5"
+        procedural-material="type: plank; repeatX: 1; repeatY: 4">
+      </a-box>
+
+      <!-- GAZE VERIFICATION TARGET SPHERES AROUND CAGE -->
+      <a-sphere class="clickable" gaze-target="id: T1" position="-2.4 1.4 2.4" radius="0.28" color="#f97316"></a-sphere>
+      <a-sphere class="clickable" gaze-target="id: T2" position="2.4 1.4 2.4" radius="0.28" color="#f97316"></a-sphere>
+      <a-sphere class="clickable" gaze-target="id: T3" position="0 -1.8 3.2" radius="0.32" color="#f97316"></a-sphere>
+      <a-sphere class="clickable" gaze-target="id: T4" position="2.6 2.2 -1.2" radius="0.28" color="#f97316"></a-sphere>
+
+      <!-- IN-CABIN 3D SPATIAL CONTROL CONSOLE -->
+      <a-entity position="-0.85 1.15 -1.18" rotation="0 12 0">
+        <a-box width="1.15" height="0.72" depth="0.05" color="#0f172a"></a-box>
+        <a-text
+          id="vr-console-readout"
+          value="ALT: 0.0m / 0m\nSWAY: 0.0 cm/s\nTARGETS: 0/4 | STABLE"
+          position="-0.52 0.21 0.03"
+          width="1.9"
+          color="#38bdf8">
+        </a-text>
+
+        <!-- 3D Stage Buttons -->
+        <a-box class="clickable" vr-ui-btn="action: stage; param: 0" position="-0.42 -0.05 0.04" width="0.18" height="0.11" depth="0.03" color="#1e293b">
+          <a-text value="0m" align="center" position="0 0 0.02" width="1.8" color="#ffffff"></a-text>
+        </a-box>
+        <a-box class="clickable" vr-ui-btn="action: stage; param: 1" position="-0.21 -0.05 0.04" width="0.18" height="0.11" depth="0.03" color="#1e293b">
+          <a-text value="5m" align="center" position="0 0 0.02" width="1.8" color="#ffffff"></a-text>
+        </a-box>
+        <a-box class="clickable" vr-ui-btn="action: stage; param: 2" position="0.0 -0.05 0.04" width="0.18" height="0.11" depth="0.03" color="#1e293b">
+          <a-text value="15m" align="center" position="0 0 0.02" width="1.8" color="#ffffff"></a-text>
+        </a-box>
+        <a-box class="clickable" vr-ui-btn="action: stage; param: 3" position="0.21 -0.05 0.04" width="0.18" height="0.11" depth="0.03" color="#1e293b">
+          <a-text value="30m" align="center" position="0 0 0.02" width="1.8" color="#ffffff"></a-text>
+        </a-box>
+        <a-box class="clickable" vr-ui-btn="action: stage; param: 4" position="0.42 -0.05 0.04" width="0.18" height="0.11" depth="0.03" color="#1e293b">
+          <a-text value="60m" align="center" position="0 0 0.02" width="1.8" color="#ffffff"></a-text>
+        </a-box>
+
+        <!-- Plank & Emergency Descent 3D Buttons -->
+        <a-box class="clickable" vr-ui-btn="action: toggle-plank" position="-0.25 -0.22 0.04" width="0.48" height="0.12" depth="0.03" color="#b45309">
+          <a-text value="PLANK TOGGLE" align="center" position="0 0 0.02" width="1.6" color="#ffffff"></a-text>
+        </a-box>
+        <a-box class="clickable" vr-ui-btn="action: abort" position="0.27 -0.22 0.04" width="0.48" height="0.12" depth="0.03" color="#b91c1c">
+          <a-text value="ABORT (0m)" align="center" position="0 0 0.02" width="1.6" color="#ffffff"></a-text>
+        </a-box>
+      </a-entity>
+
+      <!-- PLAYER CAMERA & VR CONTROLLERS -->
+      <a-entity id="head-camera" camera look-controls wasd-controls="acceleration: 14" position="0 1.65 0">
+        <a-ring
+          cursor="fuse: false"
+          raycaster="objects: .clickable; far: 25"
+          position="0 0 -1"
+          radius-inner="0.012"
+          radius-outer="0.018"
+          color="#38bdf8"
+          material="shader: flat">
+        </a-ring>
+      </a-entity>
+
+      <a-entity laser-controls="hand: left" raycaster="objects: .clickable; far: 25"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="objects: .clickable; far: 25"></a-entity>
+
+    </a-entity>
+  </a-scene>
+
 </body>
 </html>
