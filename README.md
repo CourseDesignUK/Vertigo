@@ -1,11 +1,6 @@
 # 🏗️ WAH-VAS // Work at Height Vertigo & Acrophobia Assessment Simulator
 
-![Version](https://img.shields.io/badge/Version-5.0-f59e0b?style=for-the-badge)
-![WebXR](https://img.shields.io/badge/WebXR-A--Frame_1.5.0-38bdf8?style=for-the-badge)
-![Dependencies](https://img.shields.io/badge/Assets-Zero_External_Files-10b981?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-slate?style=for-the-badge)
-
-**WAH-VAS (Work at Height Vertigo & Acrophobia Simulator)** is a zero-dependency, single-file WebXR and 3D WebGL occupational safety and vestibular assessment simulator. It is designed to evaluate postural stability, head-sway tremor, and visual target acquisition across progressive industrial elevations up to **60 meters**.
+**WAH-VAS (Work at Height Vertigo & Acrophobia Simulator)** is a zero-dependency, WebXR and 3D WebGL occupational safety and vestibular assessment simulator. It is designed to evaluate postural stability, head-sway tremor, and visual target acquisition across progressive industrial elevations up to **60 meters**.
 
 Built with **A-Frame (Three.js)**, **Tailwind CSS**, and a **Synthesized Web Audio API** engine, it runs out-of-the-box on both standard desktop browsers (Instructor/2D Mode) and standalone VR headsets such as Meta Quest 2/3/Pro (Immersive WebXR Mode).
 
