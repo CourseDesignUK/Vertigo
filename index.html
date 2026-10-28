@@ -343,25 +343,32 @@
     });
 
     // =========================================================
-    // CITY MODEL GROUND FIT
-    // Fits city.glb to a sensible real-world footprint and places
-    // the lowest point of the model at ground level (Y = 0).
+    // CITY MODEL FIT + 5 x 5 TILING
+    // Fits one city.glb tile, duplicates it into a 5 x 5 grid,
+    // and lowers the entire city surface by 2 metres.
     // =========================================================
     AFRAME.registerComponent('city-ground-fit', {
       schema: {
-        targetSize: { type: 'number', default: 300 }
+        targetSize: { type: 'number', default: 300 },
+        tiles: { type: 'int', default: 5 },
+        lowerBy: { type: 'number', default: 2 }
       },
       init: function () {
         this.fitModel = this.fitModel.bind(this);
         this.el.addEventListener('model-loaded', this.fitModel);
-        // Also handle a model that has already loaded.
         if (this.el.getObject3D('mesh')) this.fitModel();
       },
       fitModel: function () {
         const model = this.el.getObject3D('mesh');
         if (!model) return;
 
-        // Measure the imported model before applying our fit scale.
+        // Remove old duplicates if the model is reloaded.
+        if (this.tileGroup) {
+          this.el.object3D.remove(this.tileGroup);
+          this.tileGroup = null;
+        }
+
+        // Measure the source model before applying the fit scale.
         this.el.object3D.scale.set(1, 1, 1);
         this.el.object3D.position.set(0, 0, 0);
         this.el.object3D.updateMatrixWorld(true);
@@ -383,24 +390,47 @@
           return;
         }
 
-        // A 300 m maximum X/Z footprint gives the scene useful city context.
+        // Fit the longest side of one tile to targetSize metres.
         const fitScale = this.data.targetSize / footprint;
         this.el.object3D.scale.setScalar(fitScale);
         this.el.object3D.position.set(
           -center.x * fitScale,
-          -bounds.min.y * fitScale,
+          -bounds.min.y * fitScale - this.data.lowerBy,
           -center.z * fitScale
         );
+
+        // Keep the original model as the centre tile and add the other
+        // 24 copies in a tightly spaced 5 x 5 grid.
+        const tileCount = Math.max(1, this.data.tiles);
+        this.tileGroup = new THREE.Group();
+        this.tileGroup.name = 'city-glb-tiles';
+        const half = Math.floor(tileCount / 2);
+
+        for (let ix = 0; ix < tileCount; ix++) {
+          for (let iz = 0; iz < tileCount; iz++) {
+            if (ix === half && iz === half) continue; // original is centre tile
+            const tile = new THREE.Group();
+            tile.position.set(
+              (ix - half) * size.x,
+              0,
+              (iz - half) * size.z
+            );
+            tile.add(model.clone(true));
+            this.tileGroup.add(tile);
+          }
+        }
+        this.el.object3D.add(this.tileGroup);
         this.el.object3D.updateMatrixWorld(true);
 
         console.info(
-          `city.glb fitted: ${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ` +
-          `${size.z.toFixed(1)} source units; scale ${fitScale.toFixed(4)}; ` +
-          `target footprint ${this.data.targetSize} m.`
+          `city.glb fitted and tiled ${tileCount} x ${tileCount}: ` +
+          `${(size.x * fitScale).toFixed(1)} × ${(size.z * fitScale).toFixed(1)} m per tile; ` +
+          `lowered ${this.data.lowerBy} m.`
         );
       },
       remove: function () {
         this.el.removeEventListener('model-loaded', this.fitModel);
+        if (this.tileGroup && this.el.object3D) this.el.object3D.remove(this.tileGroup);
       }
     });
 
@@ -981,13 +1011,13 @@
     <a-entity light="type: directional; color: #ffffff; intensity: 0.95" position="25 60 30"></a-entity>
 
     <!-- The imported city.glb provides the ground/terrain surface.
-         city-ground-fit centers it, scales its X/Z footprint to 300 m,
-         and aligns its lowest point with Y = 0. -->
+         city-ground-fit scales one tile to a 300 m maximum footprint, tiles it 5 x 5,
+         and lowers the tiled city by 2 m. -->
     <!-- PROCEDURAL 65M LATTICE TOWER -->
     <a-entity id="lattice-tower" industrial-tower-builder></a-entity>
 
     <!-- 3D CITY ENVIRONMENT (Centered around the tower base with larger scale for urban sprawl) -->
-    <a-entity id="city-environment" gltf-model="#city-model" city-ground-fit="targetSize: 300" position="0 0 0" rotation="0 0 0"></a-entity>
+    <a-entity id="city-environment" gltf-model="#city-model" city-ground-fit="targetSize: 300; tiles: 5; lowerBy: 2" position="0 0 0" rotation="0 0 0"></a-entity>
 
     <!-- GROUND SCALE REFERENCE OBJECTS (SHIPPING CONTAINERS & SAFETY VEHICLE) -->
     <a-box position="-9 1.3 5" width="2.5" height="2.6" depth="6.0" color="#1d4ed8"></a-box>
