@@ -917,15 +917,30 @@
     window.addEventListener('DOMContentLoaded', () => {
       const skyImg = document.getElementById('skybox-img');
       const envSky = document.getElementById('env-sky');
-      if (skyImg && envSky) {
-        skyImg.addEventListener('error', () => {
-          const mesh = envSky.getObject3D('mesh');
-          if (mesh) {
-            mesh.material.map = TextureFactory.getFallbackSky();
-            mesh.material.needsUpdate = true;
-          }
-        });
-      }
+      if (!skyImg || !envSky) return;
+
+      // Apply the fallback after A-Frame has created the sky mesh. The previous
+      // handler could run too early, before getObject3D('mesh') existed.
+      const applyFallbackSky = () => {
+        const mesh = envSky.getObject3D('mesh');
+        if (!mesh || !mesh.material) {
+          requestAnimationFrame(applyFallbackSky);
+          return;
+        }
+        const fallbackTexture = TextureFactory.getFallbackSky();
+        mesh.material.map = fallbackTexture;
+        mesh.material.color.set('#ffffff');
+        mesh.material.needsUpdate = true;
+        console.warn('Skybox image failed to load; showing generated fallback sky. Check that Skybox.jpeg is in the site root and capitalization matches.');
+      };
+
+      skyImg.addEventListener('error', applyFallbackSky);
+      skyImg.addEventListener('load', () => {
+        console.info('Skybox image loaded:', skyImg.currentSrc || skyImg.src);
+      });
+
+      // Handle an image that failed before these listeners were attached.
+      if (skyImg.complete && skyImg.naturalWidth === 0) applyFallbackSky();
     });
   </script>
 </head>
