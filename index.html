@@ -343,6 +343,68 @@
     });
 
     // =========================================================
+    // CITY MODEL GROUND FIT
+    // Fits city.glb to a sensible real-world footprint and places
+    // the lowest point of the model at ground level (Y = 0).
+    // =========================================================
+    AFRAME.registerComponent('city-ground-fit', {
+      schema: {
+        targetSize: { type: 'number', default: 300 }
+      },
+      init: function () {
+        this.fitModel = this.fitModel.bind(this);
+        this.el.addEventListener('model-loaded', this.fitModel);
+        // Also handle a model that has already loaded.
+        if (this.el.getObject3D('mesh')) this.fitModel();
+      },
+      fitModel: function () {
+        const model = this.el.getObject3D('mesh');
+        if (!model) return;
+
+        // Measure the imported model before applying our fit scale.
+        this.el.object3D.scale.set(1, 1, 1);
+        this.el.object3D.position.set(0, 0, 0);
+        this.el.object3D.updateMatrixWorld(true);
+
+        const bounds = new THREE.Box3().setFromObject(model);
+        if (bounds.isEmpty()) {
+          console.warn('city.glb loaded but contains no measurable geometry.');
+          return;
+        }
+
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        bounds.getSize(size);
+        bounds.getCenter(center);
+
+        const footprint = Math.max(size.x, size.z);
+        if (!Number.isFinite(footprint) || footprint <= 0) {
+          console.warn('Could not determine city.glb footprint; leaving its scale unchanged.');
+          return;
+        }
+
+        // A 300 m maximum X/Z footprint gives the scene useful city context.
+        const fitScale = this.data.targetSize / footprint;
+        this.el.object3D.scale.setScalar(fitScale);
+        this.el.object3D.position.set(
+          -center.x * fitScale,
+          -bounds.min.y * fitScale,
+          -center.z * fitScale
+        );
+        this.el.object3D.updateMatrixWorld(true);
+
+        console.info(
+          `city.glb fitted: ${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ` +
+          `${size.z.toFixed(1)} source units; scale ${fitScale.toFixed(4)}; ` +
+          `target footprint ${this.data.targetSize} m.`
+        );
+      },
+      remove: function () {
+        this.el.removeEventListener('model-loaded', this.fitModel);
+      }
+    });
+
+    // =========================================================
     // 2. INDUSTRIAL TOWER & ENVIRONMENT BUILDER
     // =========================================================
     AFRAME.registerComponent('industrial-tower-builder', {
@@ -902,7 +964,7 @@
     <!-- ASSET PRELOADER FOR ROOT SKYBOX & CITY MODEL -->
     <a-assets timeout="15000">
       <img id="skybox-img" src="./Skybox.jpeg" crossorigin="anonymous">
-      <a-asset-item id="city-model" src="./City.glb"></a-asset-item>
+      <a-asset-item id="city-model" src="./city.glb"></a-asset-item>
     </a-assets>
 
     <!-- 360 EQUIRECTANGULAR SKYBOX (EXEMPT FROM FOG) -->
@@ -918,20 +980,14 @@
     <a-entity light="type: ambient; color: #cbd5e1; intensity: 0.75"></a-entity>
     <a-entity light="type: directional; color: #ffffff; intensity: 0.95" position="25 60 30"></a-entity>
 
-    <!-- GROUND PLANE -->
-    <a-plane
-      position="0 0 0"
-      rotation="-90 0 0"
-      width="300"
-      height="300"
-      procedural-material="type: ground; repeatX: 60; repeatY: 60">
-    </a-plane>
-
+    <!-- The imported city.glb provides the ground/terrain surface.
+         city-ground-fit centers it, scales its X/Z footprint to 300 m,
+         and aligns its lowest point with Y = 0. -->
     <!-- PROCEDURAL 65M LATTICE TOWER -->
     <a-entity id="lattice-tower" industrial-tower-builder></a-entity>
 
     <!-- 3D CITY ENVIRONMENT (Centered around the tower base with larger scale for urban sprawl) -->
-    <a-entity gltf-model="#city-model" position="0 0 0" scale="2.5 2.5 2.5" rotation="0 0 0"></a-entity>
+    <a-entity id="city-environment" gltf-model="#city-model" city-ground-fit="targetSize: 300" position="0 0 0" rotation="0 0 0"></a-entity>
 
     <!-- GROUND SCALE REFERENCE OBJECTS (SHIPPING CONTAINERS & SAFETY VEHICLE) -->
     <a-box position="-9 1.3 5" width="2.5" height="2.6" depth="6.0" color="#1d4ed8"></a-box>
